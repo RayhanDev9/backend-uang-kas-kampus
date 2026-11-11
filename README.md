@@ -98,14 +98,16 @@ Untuk kegagalan, API mengembalikan `{ "success": false, "message": "..." }` deng
 
 - Simpan base URL backend pada konfigurasi environment frontend, bukan tersebar di komponen.
 - Saat frontend dan backend berjalan di komputer yang sama, gunakan `http://localhost:3000/api`.
-- Saat deployment, gunakan URL backend Vercel, misalnya `https://nama-project.vercel.app/api`.
+- Untuk deployment backend saat ini, gunakan `https://backend-uang-kas-kampus.vercel.app/api`.
 - Jika frontend dibuka dari perangkat lain dalam jaringan lokal, gunakan alamat IP komputer backend dan pastikan port server dapat diakses.
 
-Contoh variabel untuk Vite:
+Contoh file `.env` pada proyek frontend lokal:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000/api
 ```
+
+Di Vercel, buka proyek frontend → **Settings → Environment Variables**, lalu buat `VITE_API_BASE_URL` dengan value `https://backend-uang-kas-kampus.vercel.app/api` untuk **Production**. Setelah mengubah variabel tersebut, redeploy frontend agar nilainya masuk ke build.
 
 ### 2. Buat fungsi komunikasi API
 
@@ -149,14 +151,32 @@ VITE_API_BASE_URL=http://localhost:3000/api
 
 ## Konfigurasi dan Deployment Vercel
 
-- Atur `DATABASE_URL`, `ADMIN_PIN`, dan konfigurasi lain yang dibutuhkan melalui environment variables Vercel.
-- Jangan memasukkan `.env` atau rahasia ke repositori.
-- Deploy folder backend ke Vercel, lalu uji endpoint pada URL deployment.
-- Bagikan URL API dan contoh kontrak request/response kepada tim frontend.
+### Backend
+
+1. Hubungkan repository backend `backend-uang-kas-kampus` ke Vercel sebagai proyek tersendiri. Root Directory tetap di root repository (folder yang berisi `package.json`, `api/`, dan `vercel.json`).
+2. Pada proyek backend, buka **Settings → Environment Variables** dan tambahkan:
+   - `DATABASE_URL`: connection string MongoDB Atlas lengkap, termasuk nama database.
+   - `ADMIN_PIN`: PIN rahasia untuk operasi bendahara.
+3. Pilih environment **Production**, simpan, lalu deploy atau redeploy agar variabel diterapkan.
+4. URL API produksi: `https://backend-uang-kas-kampus.vercel.app/api`.
+5. Uji `https://backend-uang-kas-kampus.vercel.app/api/kas`. Endpoint root `/` tidak digunakan sebagai API dan dapat mengembalikan `Endpoint tidak ditemukan`.
+
+### Frontend
+
+1. Di proyek frontend Vercel, atur `VITE_API_BASE_URL` menjadi `https://backend-uang-kas-kampus.vercel.app/api` untuk Production.
+2. Redeploy frontend setelah menyimpan environment variable.
+3. Pastikan frontend memanggil `/kas` relatif terhadap base URL, sehingga request akhirnya menuju `https://backend-uang-kas-kampus.vercel.app/api/kas`.
+
+### Keamanan
+
+- Jangan commit `.env`, connection string, password database, atau PIN ke GitHub.
+- Simpan `DATABASE_URL` dan `ADMIN_PIN` hanya pada konfigurasi environment backend. Jangan masukkan keduanya ke frontend.
+- Jika kredensial pernah dibagikan atau terlihat di screenshot/chat, ganti password database dan PIN, lalu perbarui environment variable Vercel dan redeploy.
+- Batasi IP pada MongoDB Atlas Network Access sesuai kebutuhan; hindari akses terbuka jika tidak diperlukan.
 
 ## Konfigurasi Environment
 
-Contoh nama variabel yang digunakan (isi nilai lokal di `.env`, bukan di repositori):
+Untuk menjalankan backend lokal dengan MongoDB lokal, isi `.env` (bukan `.env.example`) seperti berikut:
 
 ```env
 DATABASE_URL=mongodb://127.0.0.1:27017/uang_kas_kampus
@@ -164,7 +184,7 @@ ADMIN_PIN=ganti-dengan-pin-lokal
 PORT=3000
 ```
 
-Untuk production, gunakan connection string MongoDB Atlas dan PIN khusus melalui pengaturan environment Vercel.
+Untuk pengembangan yang terhubung ke Atlas, gunakan connection string Atlas pada `DATABASE_URL`. Untuk production, atur URI Atlas dan PIN khusus melalui Environment Variables proyek backend Vercel.
 
 ## Catatan Kontrak
 
