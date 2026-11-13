@@ -3,12 +3,17 @@ require("dotenv").config();
 const cors = require("cors");
 const express = require("express");
 const connectDatabase = require("../src/config/db");
+const semesterRoutes = require("../src/routes/semesterRoutes");
 const kasRoutes = require("../src/routes/kasRoutes");
+const pemasukanLainRoutes = require("../src/routes/pemasukanLainRoutes");
+const historyRoutes = require("../src/routes/historyRoutes");
+const excelRoutes = require("../src/routes/excelRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.use(async (req, res, next) => {
   try {
@@ -23,6 +28,10 @@ app.use(async (req, res, next) => {
   }
 });
 
+// Mount Routes
+app.use("/api/semesters", semesterRoutes);
+app.use("/api/pemasukan-lain", pemasukanLainRoutes);
+app.use("/api/history", historyRoutes);
 app.use("/api/kas", kasRoutes);
 
 app.use((req, res) => {
@@ -35,6 +44,20 @@ app.use((req, res) => {
 app.use((error, req, res, next) => {
   if (res.headersSent) {
     return next(error);
+  }
+
+  if (error.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({
+      success: false,
+      message: "Ukuran file melebihi batas maksimal 5MB",
+    });
+  }
+
+  if (error.code === "INVALID_FILE_TYPE") {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
   }
 
   if (error.name === "ValidationError" || error.name === "CastError") {

@@ -191,3 +191,38 @@ Untuk pengembangan yang terhubung ke Atlas, gunakan connection string Atlas pada
 - Kontrak endpoint dan format respons di atas menjadi acuan integrasi frontend.
 - Ringkasan memakai NIM unik per kategori. Apabila NIM memiliki transaksi dalam kedua status, NIM tersebut dihitung pada kedua kategori; `totalSaldo` menjumlahkan nominal semua transaksi lunas.
 - `tanggalBayar` mengikuti default model (waktu saat penyimpanan) jika tidak dikirim, termasuk untuk transaksi `Belum Lunas`.
+
+---
+
+## 🚀 Roadmap Pengembangan: Multi-Semester, Pemasukan Lain, History & Excel
+
+Rencana implementasi Database dan REST API untuk 4 fitur baru:
+
+### 🗄️ 1. Database (MongoDB & Mongoose)
+- [ ] **Model `Semester` (`src/models/Semester.js`)**: `nama`, `kode` (unique), `isAktif` (boolean), `targetKasPerMhs`, `tanggalMulai`, `tanggalSelesai`.
+- [ ] **Update Model `Kas` (`src/models/Kas.js`)**: Tambahkan `semesterId` (ref `Semester`, indexed), `metodePembayaran` (Transfer/QRIS/Tunai).
+- [ ] **Model `PemasukanLain` (`src/models/PemasukanLain.js`)**: `semesterId`, `judul`, `kategori` (Sisa Semester Lalu, Sponsor, Danus, Donasi, Lainnya), `nominal`, `tanggalMasuk`, `keterangan`.
+- [ ] **Model `PaymentHistory` (`src/models/PaymentHistory.js`)**: `kasId`, `semesterId`, `nama`, `nim`, `aksi` (CREATE, UPDATE_STATUS, UPDATE_NOMINAL, DELETE, IMPORT_EXCEL), `nominal`, `statusLama`, `statusBaru`, `waktu`.
+- [ ] **Script Migrasi**: Buat data semester default untuk menampung data kas lama yang belum memiliki `semesterId`.
+
+### ⚙️ 2. Backend (Express.js REST API)
+- [ ] **Install Packages**: `npm i multer xlsx exceljs`.
+- [ ] **API Master Semester**:
+  - `GET /api/semesters` (List all)
+  - `GET /api/semesters/active` (Semester aktif)
+  - `POST /api/semesters` (Buat semester baru, PIN required)
+  - `PUT /api/semesters/:id/activate` (Set aktif, PIN required)
+- [ ] **Update API Kas**:
+  - Dukung filter `?semesterId=...` (default: semester aktif).
+  - Update `summary` kalkulasi: `totalSaldo = totalKasLunas + totalPemasukanLain`.
+- [ ] **API Pemasukan Lain**:
+  - `GET /api/pemasukan-lain?semesterId=...`
+  - `POST /api/pemasukan-lain` (PIN required)
+  - `DELETE /api/pemasukan-lain/:id` (PIN required)
+- [ ] **API History / Audit Trail**:
+  - `GET /api/history?semesterId=...`
+  - Auto-logging pada fungsi create, update, delete, dan import kas.
+- [ ] **API Import & Export Excel**:
+  - `GET /api/kas/template` (Download blank Excel template)
+  - `GET /api/kas/export?semesterId=...&format=xlsx` (Download report Excel .xlsx)
+  - `POST /api/kas/import` (Upload multipart file .xlsx / .csv dengan batch insert, PIN required)

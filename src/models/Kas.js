@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const kasSchema = new mongoose.Schema(
   {
+    semesterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Semester",
+      required: [true, "Semester wajib ditentukan"],
+      index: true,
+    },
     nim: {
       type: String,
       required: [true, "NIM wajib diisi"],
@@ -30,6 +36,11 @@ const kasSchema = new mongoose.Schema(
         message: "Status harus Lunas atau Belum Lunas",
       },
     },
+    metodePembayaran: {
+      type: String,
+      enum: ["Transfer", "QRIS", "Tunai"],
+      default: "Transfer",
+    },
     tanggalBayar: {
       type: Date,
       default: Date.now,
@@ -37,6 +48,9 @@ const kasSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Compound index untuk mempercepat pencarian data kas per semester & riwayat
+kasSchema.index({ semesterId: 1, nim: 1, periode: 1 });
 
 module.exports =
   mongoose.models.Kas || mongoose.model("Kas", kasSchema);

@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
 const Kas = require("../models/Kas");
+const Semester = require("../models/Semester");
+const PemasukanLain = require("../models/PemasukanLain");
+const PaymentHistory = require("../models/PaymentHistory");
 
 const allowedFields = new Set([
   "nim",
@@ -8,6 +11,8 @@ const allowedFields = new Set([
   "nominal",
   "status",
   "tanggalBayar",
+  "semesterId",
+  "metodePembayaran",
 ]);
 const requiredFields = ["nim", "nama", "periode", "nominal", "status"];
 const validStatuses = new Set(["Lunas", "Belum Lunas"]);
@@ -58,6 +63,16 @@ function validateKasInput(body, { partial = false } = {}) {
     return "Field status harus Lunas atau Belum Lunas";
   }
 
+  if (
+    Object.prototype.hasOwnProperty.call(body, "semesterId") &&
+    body.semesterId !== null &&
+    body.semesterId !== undefined
+  ) {
+    if (!mongoose.isValidObjectId(body.semesterId)) {
+      return "Field semesterId tidak valid";
+    }
+  }
+
   if (Object.prototype.hasOwnProperty.call(body, "tanggalBayar")) {
     const date = new Date(body.tanggalBayar);
     if (
@@ -79,7 +94,27 @@ function escapeRegex(value) {
 
 async function getKas(req, res, next) {
   try {
-    const filter = {};
+    let currentSemester = null;
+    let semesterFilter = {};
+
+    if (req.query.semesterId) {
+      if (!mongoose.isValidObjectId(req.query.semesterId)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID semester tidak valid",
+        });
+      }
+      currentSemester = await Semester.findById(req.query.semesterId).lean();
+      semesterFilter = { semesterId: new mongoose.Types.ObjectId(req.query.semesterId) };
+    } else {
+      currentSemester = await Semester.findOne({ isAktif: true }).lean();
+      if (currentSemester) {
+        semesterFilter = { semesterId: currentSemester._id };
+      }
+    }
+
+    const filter = { ...semesterFilter };
+
     if (req.query.status !== undefined) {
       if (
         typeof req.query.status !== "string" ||
@@ -107,53 +142,78 @@ async function getKas(req, res, next) {
       }
     }
 
-    const [data, summaryResult] = await Promise.all([
+    const [data, kasSummaryResult, pemasukanLainResult] = await Promise.all([
       Kas.find(filter).sort({ createdAt: -1, _id: -1 }).lean(),
       Kas.aggregate([
+        { $match: semesterFilter },
         {
           $group: {
-            _id: "$nim",
-            paidTotal: {
+            _id: null,
+            totalKasLunas: {
               $sum: {
                 $cond: [{ $eq: ["$status", "Lunas"] }, "$nominal", 0],
               },
             },
-            hasPaid: {
-              $max: { $cond: [{ $eq: ["$status", "Lunas"] }, 1, 0] },
+            totalLunas: {
+              $sum: {
+                $cond: [{ $eq: ["$status", "Lunas"] }, 1, 0],
+              },
             },
-            hasUnpaid: {
-              $max: {
+            totalBelumLunas: {
+              $sum: {
                 $cond: [{ $eq: ["$status", "Belum Lunas"] }, 1, 0],
               },
             },
           },
         },
+      ]),
+      PemasukanLain.aggregate([
+        { $match: semesterFilter },
         {
           $group: {
             _id: null,
-            totalSaldo: { $sum: "$paidTotal" },
-            totalLunas: { $sum: "$hasPaid" },
-            totalBelumLunas: { $sum: "$hasUnpaid" },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            totalSaldo: 1,
-            totalLunas: 1,
-            totalBelumLunas: 1,
+            totalPemasukanLain: { $sum: "$nominal" },
           },
         },
       ]),
     ]);
 
-    const summary = summaryResult[0] || {
-      totalSaldo: 0,
+    const kasSummary = kasSummaryResult[0] || {
+      totalKasLunas: 0,
       totalLunas: 0,
       totalBelumLunas: 0,
     };
+    const totalPemasukanLain =
+      pemasukanLainResult[0]?.totalPemasukanLain || 0;
+    const totalSaldo = kasSummary.totalKasLunas + totalPemasukanLain;
+    const targetKasPerMhs = currentSemester?.targetKasPerMhs || 0;
+    const totalMahasiswa = kasSummary.totalLunas + kasSummary.totalBelumLunas;
+    const targetKasTotal = totalMahasiswa * targetKasPerMhs;
 
-    return res.json({ success: true, summary, data });
+    const summary = {
+      totalKasLunas: kasSummary.totalKasLunas,
+      totalPemasukanLain,
+      totalSaldo,
+      totalLunas: kasSummary.totalLunas,
+      totalBelumLunas: kasSummary.totalBelumLunas,
+      targetKasTotal,
+    };
+
+    const semesterData = currentSemester
+      ? {
+          _id: currentSemester._id,
+          nama: currentSemester.nama,
+          kode: currentSemester.kode,
+          isAktif: currentSemester.isAktif,
+        }
+      : null;
+
+    return res.json({
+      success: true,
+      summary,
+      semester: semesterData,
+      data,
+    });
   } catch (error) {
     return next(error);
   }
@@ -169,7 +229,32 @@ async function createKas(req, res, next) {
       });
     }
 
-    const data = await Kas.create(req.body);
+    const payload = { ...req.body };
+    if (!payload.semesterId) {
+      const activeSemester = await Semester.findOne({ isAktif: true });
+      if (activeSemester) {
+        payload.semesterId = activeSemester._id;
+      }
+    }
+
+    const data = await Kas.create(payload);
+
+    try {
+      await PaymentHistory.create({
+        aksi: "CREATE",
+        semesterId: data.semesterId,
+        kasId: data._id,
+        nim: data.nim,
+        nama: data.nama,
+        nominal: data.nominal,
+        statusBaru: data.status,
+        keterangan: `Pencatatan kas baru untuk ${data.nama} (${data.nim})`,
+        waktu: new Date(),
+      });
+    } catch (historyError) {
+      console.error("Gagal mencatat history CREATE:", historyError.message);
+    }
+
     return res.status(201).json({
       success: true,
       message: "Data kas berhasil ditambahkan",
@@ -197,15 +282,73 @@ async function updateKas(req, res, next) {
       });
     }
 
-    const data = await Kas.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!data) {
+    const oldKas = await Kas.findById(req.params.id);
+    if (!oldKas) {
       return res.status(404).json({
         success: false,
         message: "Data kas tidak ditemukan",
       });
+    }
+
+    const data = await Kas.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    try {
+      if (req.body.status !== undefined && oldKas.status !== data.status) {
+        await PaymentHistory.create({
+          aksi: "UPDATE_STATUS",
+          semesterId: data.semesterId,
+          kasId: data._id,
+          nim: data.nim,
+          nama: data.nama,
+          nominal: data.nominal,
+          statusLama: oldKas.status,
+          statusBaru: data.status,
+          keterangan: `Status kas untuk ${data.nama} diubah dari ${oldKas.status} menjadi ${data.status}`,
+          waktu: new Date(),
+        });
+      }
+
+      if (
+        req.body.nominal !== undefined &&
+        oldKas.nominal !== data.nominal
+      ) {
+        await PaymentHistory.create({
+          aksi: "UPDATE_NOMINAL",
+          semesterId: data.semesterId,
+          kasId: data._id,
+          nim: data.nim,
+          nama: data.nama,
+          nominal: data.nominal,
+          nominalLama: oldKas.nominal,
+          nominalBaru: data.nominal,
+          statusLama: data.status,
+          statusBaru: data.status,
+          keterangan: `Nominal kas untuk ${data.nama} diubah dari Rp${oldKas.nominal.toLocaleString("id-ID")} menjadi Rp${data.nominal.toLocaleString("id-ID")}`,
+          waktu: new Date(),
+        });
+      }
+
+      if (
+        (req.body.status === undefined || oldKas.status === data.status) &&
+        (req.body.nominal === undefined || oldKas.nominal === data.nominal)
+      ) {
+        await PaymentHistory.create({
+          aksi: "UPDATE",
+          semesterId: data.semesterId,
+          kasId: data._id,
+          nim: data.nim,
+          nama: data.nama,
+          nominal: data.nominal,
+          statusBaru: data.status,
+          keterangan: `Data kas untuk ${data.nama} diperbarui`,
+          waktu: new Date(),
+        });
+      }
+    } catch (historyError) {
+      console.error("Gagal mencatat history UPDATE:", historyError.message);
     }
 
     return res.json({
@@ -233,6 +376,29 @@ async function deleteKas(req, res, next) {
         success: false,
         message: "Data kas tidak ditemukan",
       });
+    }
+
+    try {
+      await PaymentHistory.create({
+        aksi: "DELETE",
+        semesterId: data.semesterId,
+        kasId: data._id,
+        nim: data.nim,
+        nama: data.nama,
+        nominal: data.nominal,
+        statusLama: data.status,
+        keterangan: `Data kas ${data.nama} (${data.nim}) sebesar Rp${data.nominal.toLocaleString("id-ID")} dihapus`,
+        waktu: new Date(),
+        dataSnapshot: {
+          nim: data.nim,
+          nama: data.nama,
+          periode: data.periode,
+          nominal: data.nominal,
+          status: data.status,
+        },
+      });
+    } catch (historyError) {
+      console.error("Gagal mencatat history DELETE:", historyError.message);
     }
 
     return res.json({
