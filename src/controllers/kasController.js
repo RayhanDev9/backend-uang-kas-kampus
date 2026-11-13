@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Kas = require("../models/Kas");
 const Semester = require("../models/Semester");
 const PemasukanLain = require("../models/PemasukanLain");
+const Pengeluaran = require("../models/Pengeluaran");
 const PaymentHistory = require("../models/PaymentHistory");
 
 const allowedFields = new Set([
@@ -142,41 +143,51 @@ async function getKas(req, res, next) {
       }
     }
 
-    const [data, kasSummaryResult, pemasukanLainResult] = await Promise.all([
-      Kas.find(filter).sort({ createdAt: -1, _id: -1 }).lean(),
-      Kas.aggregate([
-        { $match: semesterFilter },
-        {
-          $group: {
-            _id: null,
-            totalKasLunas: {
-              $sum: {
-                $cond: [{ $eq: ["$status", "Lunas"] }, "$nominal", 0],
+    const [data, kasSummaryResult, pemasukanLainResult, pengeluaranResult] =
+      await Promise.all([
+        Kas.find(filter).sort({ createdAt: -1, _id: -1 }).lean(),
+        Kas.aggregate([
+          { $match: semesterFilter },
+          {
+            $group: {
+              _id: null,
+              totalKasLunas: {
+                $sum: {
+                  $cond: [{ $eq: ["$status", "Lunas"] }, "$nominal", 0],
+                },
               },
-            },
-            totalLunas: {
-              $sum: {
-                $cond: [{ $eq: ["$status", "Lunas"] }, 1, 0],
+              totalLunas: {
+                $sum: {
+                  $cond: [{ $eq: ["$status", "Lunas"] }, 1, 0],
+                },
               },
-            },
-            totalBelumLunas: {
-              $sum: {
-                $cond: [{ $eq: ["$status", "Belum Lunas"] }, 1, 0],
+              totalBelumLunas: {
+                $sum: {
+                  $cond: [{ $eq: ["$status", "Belum Lunas"] }, 1, 0],
+                },
               },
             },
           },
-        },
-      ]),
-      PemasukanLain.aggregate([
-        { $match: semesterFilter },
-        {
-          $group: {
-            _id: null,
-            totalPemasukanLain: { $sum: "$nominal" },
+        ]),
+        PemasukanLain.aggregate([
+          { $match: semesterFilter },
+          {
+            $group: {
+              _id: null,
+              totalPemasukanLain: { $sum: "$nominal" },
+            },
           },
-        },
-      ]),
-    ]);
+        ]),
+        Pengeluaran.aggregate([
+          { $match: semesterFilter },
+          {
+            $group: {
+              _id: null,
+              totalPengeluaran: { $sum: "$nominal" },
+            },
+          },
+        ]),
+      ]);
 
     const kasSummary = kasSummaryResult[0] || {
       totalKasLunas: 0,
@@ -185,7 +196,11 @@ async function getKas(req, res, next) {
     };
     const totalPemasukanLain =
       pemasukanLainResult[0]?.totalPemasukanLain || 0;
-    const totalSaldo = kasSummary.totalKasLunas + totalPemasukanLain;
+    const totalPengeluaran =
+      pengeluaranResult[0]?.totalPengeluaran || 0;
+    const totalPemasukan = kasSummary.totalKasLunas + totalPemasukanLain;
+    const saldoBersih = totalPemasukan - totalPengeluaran;
+    const totalSaldo = saldoBersih; // Alias untuk konsistensi
     const targetKasPerMhs = currentSemester?.targetKasPerMhs || 0;
     const totalMahasiswa = kasSummary.totalLunas + kasSummary.totalBelumLunas;
     const targetKasTotal = totalMahasiswa * targetKasPerMhs;
@@ -193,6 +208,9 @@ async function getKas(req, res, next) {
     const summary = {
       totalKasLunas: kasSummary.totalKasLunas,
       totalPemasukanLain,
+      totalPemasukan,
+      totalPengeluaran,
+      saldoBersih,
       totalSaldo,
       totalLunas: kasSummary.totalLunas,
       totalBelumLunas: kasSummary.totalBelumLunas,

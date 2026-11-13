@@ -1,19 +1,15 @@
 # ⚙️ Backend API Architecture & Rules (`be.md`)
 
-Dokumen spesifikasi teknis REST API Node.js & Express.js untuk backend **KasKita**, mencakup kontrak endpoint, pemrosesan Excel/CSV, audit history, dan keamanan.
+Dokumen spesifikasi teknis REST API Node.js & Express.js untuk backend **KasKita**, mencakup kontrak endpoint multi-semester, pemasukan non-kas, **pengeluaran kas (cash out / belanja kelas)**, pemrosesan Excel/CSV, audit history, dan keamanan.
 
 ---
 
-## 1. Dependensi Tambahan
+## 1. Dependensi
 
 Jalankan di direktori `backend/`:
 ```bash
 npm install multer xlsx exceljs
 ```
-
-* `multer`: Menangani upload file multipart (`multipart/form-data`) ke memori buffer.
-* `xlsx` (*SheetJS*): Membaca file `.xlsx` dan `.csv` hasil upload secara efisien.
-* `exceljs`: Menghasilkan (*generate*) file Excel `.xlsx` dengan pewarnaan header, format currency IDR, auto-width kolom, dan font yang rapi saat diekspor.
 
 ---
 
@@ -24,25 +20,28 @@ src/
 ├── config/
 │   └── db.js
 ├── models/
-│   ├── Semester.js        (Baru)
-│   ├── Kas.js             (Diperbarui)
-│   ├── PemasukanLain.js   (Baru)
-│   └── PaymentHistory.js  (Baru)
+│   ├── Semester.js
+│   ├── Kas.js
+│   ├── PemasukanLain.js
+│   ├── Pengeluaran.js         (BARU: Cash Out / Belanja Kelas)
+│   └── PaymentHistory.js      (Audit Trail Kas & Pengeluaran)
 ├── middlewares/
-│   ├── authPin.js         (Verifikasi header x-admin-pin)
-│   └── upload.js          (Multer memory storage untuk file excel/csv)
+│   ├── authPin.js             (Verifikasi header x-admin-pin)
+│   └── upload.js              (Multer memory storage untuk file excel/csv)
 ├── controllers/
-│   ├── semesterController.js   (Baru)
-│   ├── kasController.js        (Diperbarui)
-│   ├── pemasukanLainController.js (Baru)
-│   ├── historyController.js    (Baru)
-│   └── excelController.js      (Baru)
+│   ├── semesterController.js
+│   ├── kasController.js
+│   ├── pemasukanLainController.js
+│   ├── pengeluaranController.js (BARU)
+│   ├── historyController.js
+│   └── excelController.js
 └── routes/
-    ├── semesterRoutes.js       (Baru)
-    ├── kasRoutes.js            (Diperbarui)
-    ├── pemasukanLainRoutes.js  (Baru)
-    ├── historyRoutes.js        (Baru)
-    └── excelRoutes.js          (Baru)
+    ├── semesterRoutes.js
+    ├── kasRoutes.js
+    ├── pemasukanLainRoutes.js
+    ├── pengeluaranRoutes.js     (BARU)
+    ├── historyRoutes.js
+    └── excelRoutes.js
 ```
 
 ---
@@ -53,49 +52,34 @@ src/
 
 | Method | Endpoint | Akses | Deskripsi |
 |---|---|---|---|
-| `GET` | `/api/semesters` | Publik | Ambil semua daftar semester (diurutkan tanggal terbaru) |
-| `GET` | `/api/semesters/active` | Publik | Ambil satu semester yang sedang aktif |
+| `GET` | `/api/semesters` | Publik | Ambil semua daftar semester |
+| `GET` | `/api/semesters/active` | Publik | Ambil semester yang sedang aktif |
 | `POST` | `/api/semesters` | Bendahara (`x-admin-pin`) | Buat semester baru |
-| `PUT` | `/api/semesters/:id/activate` | Bendahara (`x-admin-pin`) | Jadikan semester ini aktif (dan nonaktifkan lainnya) |
-
-**Format Request POST `/api/semesters`:**
-```json
-{
-  "nama": "Semester Ganjil 2024/2025",
-  "kode": "2024-1",
-  "isAktif": true,
-  "targetKasPerMhs": 50000,
-  "tanggalMulai": "2024-09-01",
-  "tanggalSelesai": "2025-01-31"
-}
-```
+| `PUT` | `/api/semesters/:id/activate` | Bendahara (`x-admin-pin`) | Aktifkan semester terpilih |
 
 ---
 
-### B. Modul Kas (`/api/kas`) — Diperbarui
+### B. Modul Kas (`/api/kas`) — Ringkasan Saldo Terkonsolidasi
 
 * **`GET /api/kas?semesterId=...&status=...&search=...`**
-  * Jika parameter `semesterId` tidak dikirim oleh client, backend otomatis mengambil data dari **semester yang sedang aktif**.
-  * **Kalkulasi `summary` diperbarui**:
-    ```json
-    {
-      "summary": {
-        "totalKasLunas": 1500000,
-        "totalPemasukanLain": 350000,
-        "totalSaldo": 1850000,
-        "totalLunas": 30,
-        "totalBelumLunas": 5,
-        "targetKasTotal": 1750000
-      },
-      "semester": {
-        "_id": "6734abc...",
-        "nama": "Semester Ganjil 2024/2025",
-        "kode": "2024-1",
-        "isAktif": true
-      },
-      "data": [ ... ]
-    }
-    ```
+* **Kalkulasi `summary` mencakup uang masuk dan pengeluaran**:
+  ```json
+  {
+    "summary": {
+      "totalKasLunas": 1500000,
+      "totalPemasukanLain": 350000,
+      "totalPemasukan": 1850000,
+      "totalPengeluaran": 250000,
+      "saldoBersih": 1600000,
+      "totalSaldo": 1600000,
+      "totalLunas": 30,
+      "totalBelumLunas": 5,
+      "targetKasTotal": 1750000
+    },
+    "semester": { ... },
+    "data": [ ... ]
+  }
+  ```
 
 ---
 
@@ -103,90 +87,63 @@ src/
 
 | Method | Endpoint | Akses | Deskripsi |
 |---|---|---|---|
-| `GET` | `/api/pemasukan-lain?semesterId=...` | Publik | Daftar pemasukan non-kas pada semester terpilih |
-| `POST` | `/api/pemasukan-lain` | Bendahara (`x-admin-pin`) | Catat uang masuk non-kas (sisa semester lalu, dll) |
+| `GET` | `/api/pemasukan-lain?semesterId=...` | Publik | Daftar pemasukan non-kas (sisa semester lalu, dll) |
+| `POST` | `/api/pemasukan-lain` | Bendahara (`x-admin-pin`) | Catat pemasukan non-kas baru |
 | `DELETE` | `/api/pemasukan-lain/:id` | Bendahara (`x-admin-pin`) | Hapus catatan pemasukan lain |
 
-**Format Request POST `/api/pemasukan-lain`:**
+---
+
+### D. Modul Pengeluaran / Belanja Kas (`/api/pengeluaran`) — [BARU: CASH OUT]
+
+Modul untuk mencatat uang kas yang ditarik dan dibelanjakan untuk keperluan kelas:
+
+| Method | Endpoint | Akses | Deskripsi |
+|---|---|---|---|
+| `GET` | `/api/pengeluaran?semesterId=...&kategori=...&search=...` | Publik | Ambil daftar belanja/pengeluaran kas kelas |
+| `POST` | `/api/pengeluaran` | Bendahara (`x-admin-pin`) | Catat penarikan/pengeluaran uang kas |
+| `DELETE` | `/api/pengeluaran/:id` | Bendahara (`x-admin-pin`) | Hapus / batalkan catatan pengeluaran |
+
+**Format Request POST `/api/pengeluaran`:**
 ```json
 {
   "semesterId": "6734abc...",
-  "judul": "Sisa Saldo Kas Semester Genap Lalu",
-  "kategori": "Sisa Semester Lalu",
-  "nominal": 450000,
-  "tanggalMasuk": "2024-09-02",
-  "keterangan": "Sisa kas yang ditransfer dari periode kepengurusan lama"
+  "judul": "Fotokopi Modul Praktikum Jaringan",
+  "kategori": "Akademik & Materi",
+  "nominal": 75000,
+  "tanggalPengeluaran": "2024-10-15",
+  "penanggungJawab": "Budi Santoso (Sie Perlengkapan)",
+  "keterangan": "Fotokopi 35 set modul untuk pertemuan lab ke-4",
+  "buktiNotaUrl": "https://res.cloudinary.com/.../nota.jpg"
 }
 ```
 
+**Aturan Bisnis Backend (Business Logic)**:
+1. **Validasi Saldo**: Sebelum menyimpan pengeluaran, periksa apakah $\text{Saldo Kas} \ge \text{Nominal Pengeluaran}$. Jika kas tidak cukup, kembalikan response peringatan defisit kas (HTTP 400).
+2. **Auto-Logging Audit**: Begitu pengeluaran disimpan, sistem otomatis mencatat dokumen baru di `PaymentHistory` dengan aksi `EXPENSE_CREATE`.
+3. **Rollback saat Delete**: Jika catatan pengeluaran dihapus, saldo otomatis kembali bertambah dan dicatat di `PaymentHistory` dengan aksi `EXPENSE_DELETE`.
+
 ---
 
-### D. Modul Audit History (`/api/history`)
+### E. Modul Audit History (`/api/history`)
 
 * **`GET /api/history?semesterId=...&limit=50`** (Publik)
-  * Menampilkan urutan log mutasi dan perubahan status kas secara kronologis (terbaru di atas).
-
-* **Aturan Logging Otomatis di Backend**:
-  Setiap kali controller kas mengeksekusi operasi berikut, sistem wajib membuat dokumen di `PaymentHistory`:
-  1. `createKas` $\rightarrow$ Catat aksi `CREATE`.
-  2. `updateKas` $\rightarrow$ Jika status berubah, catat `UPDATE_STATUS` (`statusLama` & `statusBaru`). Jika nominal berubah, catat `UPDATE_NOMINAL`.
-  3. `deleteKas` $\rightarrow$ Catat aksi `DELETE` beserta snapshot nama dan nominal.
-  4. `importKas` $\rightarrow$ Catat aksi `IMPORT_EXCEL` dengan total baris data yang berhasil dimasukkan.
-
----
-
-### E. Modul Export & Import File Excel/CSV
-
-#### 1. Download Template Excel
-* **`GET /api/kas/template`**
-* Mengembalikan file template `.xlsx` yang sudah diformat dengan baris contoh:
-  * Kolom: `NIM`, `Nama Mahasiswa`, `Periode`, `Nominal`, `Status` (Lunas / Belum Lunas).
-  * Baris 2 berisi petunjuk format (misal: "Contoh: 2401020035 | Budi Santoso | Minggu 1 | 10000 | Lunas").
-
-#### 2. Export Data Kas (.xlsx)
-* **`GET /api/kas/export?semesterId=...&format=xlsx`**
-* Menghasilkan file download Excel bernama `Laporan-Kas-[NamaSemester]-[Tanggal].xlsx`.
-* **Spesifikasi Tampilan Excel (`exceljs`)**:
-  * Header tabel berwarna Emerald (`#059669`) dengan teks putih tebal.
-  * Kolom `NIM` diformat sebagai **Text** agar angka tidak berubah menjadi notasi saintifik.
-  * Kolom `Nominal` diformat dengan *accounting currency* (`"Rp" #,##0`).
-  * Kolom `Status` diberi warna latar halus (Hijau untuk Lunas, Kuning untuk Belum Lunas).
-  * Di bagian bawah, terdapat baris **Total Kas Terkumpul** dengan fungsi formula `=SUM(...)`.
-
-#### 3. Upload & Batch Import Data (.xlsx / .csv)
-* **`POST /api/kas/import`** (Memerlukan header `x-admin-pin`)
-* **Request Body**: `multipart/form-data` dengan field:
-  * `file`: Berkas `.xlsx` atau `.csv` (maksimal 5MB).
-  * `semesterId`: ID semester tujuan.
-* **Aturan Pemrosesan Backend (`xlsx` SheetJS)**:
-  1. Baca buffer file melalui `xlsx.read(req.file.buffer, { type: 'buffer' })`.
-  2. Parse sheet pertama menjadi format JSON.
-  3. Validasi setiap baris:
-     - Jika baris kosong, lewati (*skip*).
-     - NIM dan Nama wajib terisi.
-     - Nominal harus berupa angka valid $\ge 0$.
-     - Status harus berupa `"Lunas"` atau `"Belum Lunas"` (default jika kosong: `"Belum Lunas"`).
-  4. Lakukan penyimpanan massal menggunakan `Kas.insertMany(validRecords)`.
-  5. Buat entri log di `PaymentHistory` untuk audit import.
-  6. Return respons jumlah data yang sukses dan daftar baris yang dilewati (jika ada).
+* Mengembalikan log mutasi lengkap:
+  * Pembuatan kas (`CREATE`)
+  * Perubahan status lunas (`UPDATE_STATUS`)
+  * Penghapusan kas (`DELETE`)
+  * Impor data massal (`IMPORT_EXCEL`)
+  * **Penarikan uang belanja (`EXPENSE_CREATE`)**
+  * **Pembatalan belanja (`EXPENSE_DELETE`)**
 
 ---
 
-## 4. Standar Respons & Error Backend
+### F. Modul Export & Import File Excel/CSV
 
-Setiap endpoint mengembalikan struktur respons JSON konsisten:
-```json
-// Berhasil
-{
-  "success": true,
-  "message": "Data berhasil diproses",
-  "data": { ... }
-}
-
-// Gagal
-{
-  "success": false,
-  "message": "PIN bendahara tidak valid atau salah.",
-  "errors": [ ... ]
-}
-```
+* `GET /api/kas/template`: Mengunduh template Excel (`.xlsx`).
+* `GET /api/kas/export?semesterId=...&format=xlsx`: 
+  * Menghasilkan file Excel multi-sheet:
+    * **Sheet 1 (Iuran Kas Mahasiswa)**: Daftar mahasiswa, NIM, nominal, status lunas.
+    * **Sheet 2 (Pemasukan Non-Kas)**: Rincian sisa semester lalu, sponsor, danus.
+    * **Sheet 3 (Laporan Pengeluaran Kas)**: Rincian belanja kelas, kategori, nominal, dan penanggung jawab.
+    * **Sheet Ringkasan**: Rekapitulasi Total Pemasukan - Total Pengeluaran = Saldo Kas Akhir.
+* `POST /api/kas/import`: Batch upload data kas mahasiswa dari file `.xlsx` atau `.csv` (`x-admin-pin`).

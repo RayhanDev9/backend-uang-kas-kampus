@@ -6,6 +6,7 @@ const connectDatabase = require("../src/config/db");
 const semesterRoutes = require("../src/routes/semesterRoutes");
 const kasRoutes = require("../src/routes/kasRoutes");
 const pemasukanLainRoutes = require("../src/routes/pemasukanLainRoutes");
+const pengeluaranRoutes = require("../src/routes/pengeluaranRoutes");
 const historyRoutes = require("../src/routes/historyRoutes");
 const excelRoutes = require("../src/routes/excelRoutes");
 
@@ -31,6 +32,7 @@ app.use(async (req, res, next) => {
 // Mount Routes
 app.use("/api/semesters", semesterRoutes);
 app.use("/api/pemasukan-lain", pemasukanLainRoutes);
+app.use("/api/pengeluaran", pengeluaranRoutes);
 app.use("/api/history", historyRoutes);
 app.use("/api/kas", kasRoutes);
 

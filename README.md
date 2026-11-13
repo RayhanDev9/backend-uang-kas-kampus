@@ -194,35 +194,40 @@ Untuk pengembangan yang terhubung ke Atlas, gunakan connection string Atlas pada
 
 ---
 
-## 🚀 Roadmap Pengembangan: Multi-Semester, Pemasukan Lain, History & Excel
+## 🚀 Roadmap Pengembangan: Multi-Semester, Pemasukan Lain, Pengeluaran (Cash Out), History & Excel
 
-Rencana implementasi Database dan REST API untuk 4 fitur baru:
+Rencana dan realisasi implementasi Database dan REST API:
 
 ### 🗄️ 1. Database (MongoDB & Mongoose)
-- [ ] **Model `Semester` (`src/models/Semester.js`)**: `nama`, `kode` (unique), `isAktif` (boolean), `targetKasPerMhs`, `tanggalMulai`, `tanggalSelesai`.
-- [ ] **Update Model `Kas` (`src/models/Kas.js`)**: Tambahkan `semesterId` (ref `Semester`, indexed), `metodePembayaran` (Transfer/QRIS/Tunai).
-- [ ] **Model `PemasukanLain` (`src/models/PemasukanLain.js`)**: `semesterId`, `judul`, `kategori` (Sisa Semester Lalu, Sponsor, Danus, Donasi, Lainnya), `nominal`, `tanggalMasuk`, `keterangan`.
-- [ ] **Model `PaymentHistory` (`src/models/PaymentHistory.js`)**: `kasId`, `semesterId`, `nama`, `nim`, `aksi` (CREATE, UPDATE_STATUS, UPDATE_NOMINAL, DELETE, IMPORT_EXCEL), `nominal`, `statusLama`, `statusBaru`, `waktu`.
-- [ ] **Script Migrasi**: Buat data semester default untuk menampung data kas lama yang belum memiliki `semesterId`.
+- [x] **Model `Semester` (`src/models/Semester.js`)**: `nama`, `kode` (unique), `isAktif` (boolean), `targetKasPerMhs`, `tanggalMulai`, `tanggalSelesai`.
+- [x] **Update Model `Kas` (`src/models/Kas.js`)**: Tambahkan `semesterId` (ref `Semester`, indexed), `metodePembayaran` (Transfer/QRIS/Tunai).
+- [x] **Model `PemasukanLain` (`src/models/PemasukanLain.js`)**: `semesterId`, `judul`, `kategori` (Sisa Semester Lalu, Sponsor, Danus, Donasi, Lainnya), `nominal`, `tanggalMasuk`, `keterangan`.
+- [x] **Model `Pengeluaran` (`src/models/Pengeluaran.js`)**: `semesterId`, `judul`, `kategori` (Akademik & Materi, Perlengkapan Kelas, Acara & Konsumsi, Sosial & Santunan, Lainnya), `nominal`, `tanggalPengeluaran`, `penanggungJawab`, `keterangan`, `buktiNotaUrl`.
+- [x] **Model `PaymentHistory` (`src/models/PaymentHistory.js`)**: `kasId`, `pengeluaranId`, `semesterId`, `nama`, `nim`, `aksi` (CREATE, UPDATE_STATUS, UPDATE_NOMINAL, DELETE, IMPORT_EXCEL, EXPENSE_CREATE, EXPENSE_DELETE), `nominal`, `statusLama`, `statusBaru`, `waktu`.
+- [x] **Script Migrasi & Seeder**: `npm run migrate` untuk sinkronisasi index & data kas arsip, serta `npm run seed` untuk mock data komprehensif.
 
 ### ⚙️ 2. Backend (Express.js REST API)
-- [ ] **Install Packages**: `npm i multer xlsx exceljs`.
-- [ ] **API Master Semester**:
+- [x] **Install Packages**: `multer`, `xlsx`, `exceljs`.
+- [x] **API Master Semester**:
   - `GET /api/semesters` (List all)
   - `GET /api/semesters/active` (Semester aktif)
   - `POST /api/semesters` (Buat semester baru, PIN required)
   - `PUT /api/semesters/:id/activate` (Set aktif, PIN required)
-- [ ] **Update API Kas**:
+- [x] **Update API Kas**:
   - Dukung filter `?semesterId=...` (default: semester aktif).
-  - Update `summary` kalkulasi: `totalSaldo = totalKasLunas + totalPemasukanLain`.
-- [ ] **API Pemasukan Lain**:
+  - Update `summary` kalkulasi terkonsolidasi: `totalPemasukan = totalKasLunas + totalPemasukanLain`, `totalPengeluaran`, dan `saldoBersih = totalPemasukan - totalPengeluaran`.
+- [x] **API Pemasukan Lain**:
   - `GET /api/pemasukan-lain?semesterId=...`
   - `POST /api/pemasukan-lain` (PIN required)
   - `DELETE /api/pemasukan-lain/:id` (PIN required)
-- [ ] **API History / Audit Trail**:
+- [x] **API Pengeluaran Kas (Cash Out / Belanja Kelas)**:
+  - `GET /api/pengeluaran?semesterId=...&kategori=...&search=...` (List belanja kas kelas)
+  - `POST /api/pengeluaran` (Validasi saldo kas cukup, auto-log `EXPENSE_CREATE`, PIN required)
+  - `DELETE /api/pengeluaran/:id` (Hapus belanja kas, rollback saldo, auto-log `EXPENSE_DELETE`, PIN required)
+- [x] **API History / Audit Trail**:
   - `GET /api/history?semesterId=...`
-  - Auto-logging pada fungsi create, update, delete, dan import kas.
-- [ ] **API Import & Export Excel**:
+  - Auto-logging pada fungsi create, update, delete, import kas, dan transaksi belanja kas.
+- [x] **API Import & Export Excel**:
   - `GET /api/kas/template` (Download blank Excel template)
-  - `GET /api/kas/export?semesterId=...&format=xlsx` (Download report Excel .xlsx)
+  - `GET /api/kas/export?semesterId=...&format=xlsx` (Multi-sheet: Iuran Kas, Pemasukan Non-Kas, Laporan Pengeluaran, & Ringkasan Kas)
   - `POST /api/kas/import` (Upload multipart file .xlsx / .csv dengan batch insert, PIN required)

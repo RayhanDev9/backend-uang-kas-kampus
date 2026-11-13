@@ -1,6 +1,6 @@
 # 🗄️ Database Architecture & Rules (`db.md`)
 
-Dokumen spesifikasi teknis basis data MongoDB & Mongoose untuk proyek **KasKita**, mencakup koleksi multi-semester, pemasukan non-kas, riwayat transaksi, dan audit trail.
+Dokumen spesifikasi teknis basis data MongoDB & Mongoose untuk proyek **KasKita**, mencakup koleksi multi-semester, pemasukan non-kas, **pengeluaran / penarikan kas (cash out)**, riwayat transaksi, dan audit trail.
 
 ---
 
@@ -19,22 +19,24 @@ Dokumen spesifikasi teknis basis data MongoDB & Mongoose untuk proyek **KasKita*
 │ tanggalSelesai      : Date      │             │
 └───────────────┬─────────────────┘             │
                 │ 1:N                           │
-                ├───────────────────────────────┼───────────────────────────────┐
-                ▼                               ▼                               ▼
-┌─────────────────────────────────┐ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐
-│              Kas                │ │         PemasukanLain           │ │         PaymentHistory          │
-├─────────────────────────────────┤ ├─────────────────────────────────┤ ├─────────────────────────────────┤
-│ _id             : ObjectId      │ │ _id             : ObjectId      │ │ _id             : ObjectId      │
-│ semesterId      : ObjectId(FK)  │ │ semesterId      : ObjectId(FK)  │ │ semesterId      : ObjectId(FK)  │
-│ nim             : String        │ │ judul           : String        │ │ kasId           : ObjectId(opt) │
-│ nama            : String        │ │ kategori        : Enum          │ │ nama            : String        │
-│ periode         : String        │ │ nominal         : Number        │ │ nim             : String        │
-│ nominal         : Number        │ │ tanggalMasuk    : Date          │ │ aksi            : Enum          │
-│ status          : Enum          │ │ keterangan      : String        │ │ nominal         : Number        │
-│ metodeBayar     : Enum          │ │ dicatatOleh     : String        │ │ statusLama      : String        │
-│ tanggalBayar    : Date          │ └─────────────────────────────────┘ │ statusBaru      : String        │
-└─────────────────────────────────┘                                     │ waktu           : Date          │
-                                                                        └─────────────────────────────────┘
+                ├───────────────────────────────┼───────────────────────────────┬───────────────────────────────┐
+                ▼                               ▼                               ▼                               ▼
+┌─────────────────────────────────┐ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐ ┌─────────────────────────────────┐
+│              Kas                │ │         PemasukanLain           │ │          Pengeluaran            │ │         PaymentHistory          │
+│        (Uang Masuk Mhs)         │ │       (Uang Masuk Non-Kas)      │ │     (Uang Keluar/Belanja)       │ │          (Audit Trail)          │
+├─────────────────────────────────┤ ├─────────────────────────────────┤ ├─────────────────────────────────┤ ├─────────────────────────────────┤
+│ _id             : ObjectId      │ │ _id             : ObjectId      │ │ _id             : ObjectId      │ │ _id             : ObjectId      │
+│ semesterId      : ObjectId(FK)  │ │ semesterId      : ObjectId(FK)  │ │ semesterId      : ObjectId(FK)  │ │ semesterId      : ObjectId(FK)  │
+│ nim             : String        │ │ judul           : String        │ │ judul           : String        │ │ kasId           : ObjectId(opt) │
+│ nama            : String        │ │ kategori        : Enum          │ │ kategori        : Enum          │ │ pengeluaranId   : ObjectId(opt) │
+│ periode         : String        │ │ nominal         : Number        │ │ nominal         : Number        │ │ nama            : String        │
+│ nominal         : Number        │ │ tanggalMasuk    : Date          │ │ tanggalKeluar   : Date          │ │ nim             : String        │
+│ status          : Enum          │ │ keterangan      : String        │ │ penanggungJwb   : String        │ │ aksi            : Enum          │
+│ metodeBayar     : Enum          │ │ dicatatOleh     : String        │ │ keterangan      : String        │ │ nominal         : Number        │
+│ tanggalBayar    : Date          │ └─────────────────────────────────┘ │ buktiNotaUrl    : String(opt)   │ │ statusLama      : String        │
+└─────────────────────────────────┘                                     └─────────────────────────────────┘ │ statusBaru      : String        │
+                                                                                                            │ waktu           : Date          │
+                                                                                                            └─────────────────────────────────┘
 ```
 
 ---
@@ -88,8 +90,8 @@ module.exports = mongoose.models.Semester || mongoose.model("Semester", semester
 
 ---
 
-### B. Pembaruan Koleksi `Kas` (`src/models/Kas.js`)
-Menambahkan referensi semester dan metode pembayaran pada data iuran mahasiswa.
+### B. Koleksi `Kas` (`src/models/Kas.js`)
+Data iuran wajib rutin per mahasiswa.
 
 ```javascript
 const mongoose = require("mongoose");
@@ -143,7 +145,6 @@ const kasSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Compound index untuk mempercepat pencarian data kas per semester & pencegahan duplikasi
 kasSchema.index({ semesterId: 1, nim: 1, periode: 1 });
 
 module.exports = mongoose.models.Kas || mongoose.model("Kas", kasSchema);
@@ -152,7 +153,7 @@ module.exports = mongoose.models.Kas || mongoose.model("Kas", kasSchema);
 ---
 
 ### C. Koleksi `PemasukanLain` (`src/models/PemasukanLain.js`)
-Mencatat pemasukan kelas di luar uang kas rutin mahasiswa.
+Mencatat uang masuk di luar iuran mahasiswa (sisa semester lalu, sponsor, danus).
 
 ```javascript
 const mongoose = require("mongoose");
@@ -208,8 +209,82 @@ module.exports = mongoose.models.PemasukanLain || mongoose.model("PemasukanLain"
 
 ---
 
-### D. Koleksi `PaymentHistory` (`src/models/PaymentHistory.js`)
-Audit trail otomatis untuk mencatat riwayat perubahan status kas dan mutasi uang.
+### D. Koleksi `Pengeluaran` (`src/models/Pengeluaran.js`) — [BARU: CASH OUT]
+Mencatat penarikan atau pengeluaran dana kas kelas untuk belanja/kebutuhan kelas.
+
+```javascript
+const mongoose = require("mongoose");
+
+const pengeluaranSchema = new mongoose.Schema(
+  {
+    semesterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Semester",
+      required: [true, "Semester wajib ditentukan"],
+      index: true,
+    },
+    judul: {
+      type: String,
+      required: [true, "Keperluan / judul pengeluaran wajib diisi"],
+      trim: true,
+      // Contoh: "Fotokopi Modul Praktikum Algoritma", "Beli Spidol & Kabel HDMI"
+    },
+    kategori: {
+      type: String,
+      required: [true, "Kategori pengeluaran wajib diisi"],
+      enum: {
+        values: [
+          "Akademik & Materi",
+          "Perlengkapan Kelas",
+          "Acara & Konsumsi",
+          "Sosial & Santunan",
+          "Lainnya",
+        ],
+        message: "Kategori pengeluaran tidak valid",
+      },
+      default: "Perlengkapan Kelas",
+    },
+    nominal: {
+      type: Number,
+      required: [true, "Nominal pengeluaran wajib diisi"],
+      min: [1, "Nominal pengeluaran minimal Rp 1"],
+    },
+    tanggalPengeluaran: {
+      type: Date,
+      default: Date.now,
+    },
+    penanggungJawab: {
+      type: String,
+      required: [true, "Penanggung jawab/penerima uang wajib diisi"],
+      trim: true,
+      // Contoh: "Budi (Sie Perlengkapan)", "Ketua Kelas"
+    },
+    keterangan: {
+      type: String,
+      trim: true,
+    },
+    buktiNotaUrl: {
+      type: String,
+      trim: true,
+      // URL gambar struk / nota pembelanjaan (opsional)
+    },
+    dicatatOleh: {
+      type: String,
+      default: "Bendahara",
+    },
+  },
+  { timestamps: true }
+);
+
+pengeluaranSchema.index({ semesterId: 1, tanggalPengeluaran: -1 });
+
+module.exports = mongoose.models.Pengeluaran || mongoose.model("Pengeluaran", pengeluaranSchema);
+```
+
+---
+
+### E. Koleksi `PaymentHistory` (`src/models/PaymentHistory.js`)
+Audit trail otomatis untuk mutasi kas (uang masuk maupun keluar).
 
 ```javascript
 const mongoose = require("mongoose");
@@ -227,6 +302,11 @@ const paymentHistorySchema = new mongoose.Schema(
       ref: "Kas",
       required: false,
     },
+    pengeluaranId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Pengeluaran",
+      required: false,
+    },
     nama: {
       type: String,
       required: true,
@@ -239,7 +319,15 @@ const paymentHistorySchema = new mongoose.Schema(
     aksi: {
       type: String,
       required: true,
-      enum: ["CREATE", "UPDATE_STATUS", "UPDATE_NOMINAL", "DELETE", "IMPORT_EXCEL"],
+      enum: [
+        "CREATE", 
+        "UPDATE_STATUS", 
+        "UPDATE_NOMINAL", 
+        "DELETE", 
+        "IMPORT_EXCEL", 
+        "EXPENSE_CREATE", 
+        "EXPENSE_DELETE"
+      ],
     },
     nominal: {
       type: Number,
@@ -273,9 +361,14 @@ module.exports = mongoose.models.PaymentHistory || mongoose.model("PaymentHistor
 
 1. **Aturan Semester Aktif Tunggal**:
    Hanya boleh ada **tepat satu** dokumen di koleksi `Semester` yang memiliki `isAktif: true`. Setiap operasi aktivasi semester harus menonaktifkan semester lainnya terlebih dahulu (`Semester.updateMany({}, { isAktif: false })`).
-2. **Kalkulasi Saldo Terkonsolidasi**:
-   $$\text{Total Saldo Kelas} = \sum (\text{Nominal Kas Lunas}) + \sum (\text{Nominal Pemasukan Lain})$$
-3. **Migrasi Data Lama (Backward Compatibility)**:
-   - Jika ada data dokumen `Kas` yang belum memiliki `semesterId`, sistem akan otomatis membuat semester `"Semester 1 - Arsip"` dengan `isAktif: true` dan melakukan `updateMany({ semesterId: { $exists: false } }, { $set: { semesterId: defaultSemester._id } })`.
+
+2. **Kalkulasi Saldo Kas Bersih (Net Real Balance)**:
+   $$\text{Total Pemasukan} = \sum (\text{Nominal Kas Lunas}) + \sum (\text{Nominal Pemasukan Lain})$$
+   $$\text{Total Pengeluaran} = \sum (\text{Nominal Pengeluaran})$$
+   $$\text{Saldo Kas Riil Saat Ini} = \text{Total Pemasukan} - \text{Total Pengeluaran}$$
+
+3. **Validasi Defisit (Pencegahan Saldo Negatif)**:
+   Saat membuat dokumen `Pengeluaran` baru, backend disarankan memvalidasi apakah $\text{Nominal Pengeluaran} \le \text{Saldo Kas Riil}$ untuk mencegah kas bon / defisit yang tidak terotorisasi.
+
 4. **Immutability History**:
    Dokumen di koleksi `PaymentHistory` bersifat *append-only* (hanya boleh dibuat/dibaca, tidak boleh diubah atau dihapus oleh bendahara).

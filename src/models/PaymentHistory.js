@@ -13,6 +13,11 @@ const paymentHistorySchema = new mongoose.Schema(
       ref: "Kas",
       required: false,
     },
+    pengeluaranId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Pengeluaran",
+      required: false,
+    },
     nama: {
       type: String,
       required: true,
@@ -31,6 +36,8 @@ const paymentHistorySchema = new mongoose.Schema(
         "UPDATE_NOMINAL",
         "DELETE",
         "IMPORT_EXCEL",
+        "EXPENSE_CREATE",
+        "EXPENSE_DELETE",
       ],
     },
     nominal: {

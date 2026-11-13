@@ -4,6 +4,7 @@ const connectDatabase = require("../src/config/db");
 const Semester = require("../src/models/Semester");
 const Kas = require("../src/models/Kas");
 const PemasukanLain = require("../src/models/PemasukanLain");
+const Pengeluaran = require("../src/models/Pengeluaran");
 const PaymentHistory = require("../src/models/PaymentHistory");
 
 const daftarMahasiswa = [
@@ -84,7 +85,7 @@ async function seedData() {
     console.log("✓ Semester arsip dibuat:", semesterGenap.nama);
   }
 
-  // 2. Bersihkan & Isi Data Kas untuk Semester Aktif
+  // 2. Bersihkan & Isi Data Kas Mahasiswa
   console.log("\n2. Mengisi mock data kas mahasiswa pada semester aktif...");
   await Kas.deleteMany({ semesterId: semesterGanjil._id });
 
@@ -117,7 +118,7 @@ async function seedData() {
       semesterId: semesterGanjil._id,
       judul: "Sisa Saldo Kas Semester Genap Lalu",
       kategori: "Sisa Semester Lalu",
-      nominal: 450000,
+      nominal: 200000,
       tanggalMasuk: new Date("2024-09-02"),
       keterangan: "Sisa kas yang ditransfer dari periode kepengurusan lama",
       dicatatOleh: "Bendahara",
@@ -126,45 +127,74 @@ async function seedData() {
       semesterId: semesterGanjil._id,
       judul: "Keuntungan Bazar Makanan Dies Natalis",
       kategori: "Dana Usaha",
-      nominal: 350000,
+      nominal: 150000,
       tanggalMasuk: new Date("2024-09-20"),
       keterangan: "Laba bersih jualan risol dan es teh saat bazar kampus",
       dicatatOleh: "Divisi Danus",
     },
+  ];
+
+  await PemasukanLain.insertMany(dataPemasukanLain);
+  const totalPemasukanLainNominal = dataPemasukanLain.reduce((acc, c) => acc + c.nominal, 0);
+  console.log(`✓ Berhasil memasukkan ${dataPemasukanLain.length} data pemasukan lain (Rp ${totalPemasukanLainNominal.toLocaleString("id-ID")}).`);
+
+  // 4. Bersihkan & Isi Data Pengeluaran Kas (Cash Out / Belanja Kelas)
+  console.log("\n4. Mengisi mock data pengeluaran kas (Cash Out / Belanja Kelas)...");
+  await Pengeluaran.deleteMany({ semesterId: semesterGanjil._id });
+
+  const dataPengeluaran = [
     {
       semesterId: semesterGanjil._id,
-      judul: "Sponsorship Makrab dari PT Alumni Tech",
-      kategori: "Sponsor",
-      nominal: 500000,
-      tanggalMasuk: new Date("2024-10-05"),
-      keterangan: "Dukungan dana kegiatan malam keakraban kelas",
+      judul: "Fotokopi Modul Praktikum Jaringan",
+      kategori: "Akademik & Materi",
+      nominal: 75000,
+      tanggalPengeluaran: new Date("2024-10-05"),
+      penanggungJawab: "Budi Santoso (Sie Perlengkapan)",
+      keterangan: "Fotokopi 35 set materi untuk pertemuan lab ke-4",
+      buktiNotaUrl: "https://example.com/nota-fotokopi.jpg",
       dicatatOleh: "Bendahara",
     },
     {
       semesterId: semesterGanjil._id,
-      judul: "Donasi Dosen Pembimbing Akademik",
-      kategori: "Donasi",
-      nominal: 200000,
-      tanggalMasuk: new Date("2024-10-18"),
-      keterangan: "Bantuan dana kas dari Pak Dosen untuk kegiatan kelas",
-      dicatatOleh: "Ketua Kelas",
+      judul: "Beli Spidol Whiteboard & Penghapus",
+      kategori: "Perlengkapan Kelas",
+      nominal: 35000,
+      tanggalPengeluaran: new Date("2024-10-12"),
+      penanggungJawab: "Dimas Pratama",
+      keterangan: "Pengadaan spidol 3 warna dan refill tinta",
+      buktiNotaUrl: "",
+      dicatatOleh: "Bendahara",
     },
     {
       semesterId: semesterGanjil._id,
-      judul: "Kembalian Belanja Spidol & Map Kelas",
-      kategori: "Lainnya",
-      nominal: 25000,
-      tanggalMasuk: new Date("2024-11-01"),
-      keterangan: "Sisa pembelian perlengkapan kuliah di fotokopi kampus",
+      judul: "Kabel HDMI & Converter Type-C Proyektor",
+      kategori: "Perlengkapan Kelas",
+      nominal: 85000,
+      tanggalPengeluaran: new Date("2024-10-25"),
+      penanggungJawab: "Ahmad Fadhil",
+      keterangan: "Kabel HDMI 3 meter untuk presentasi kelas di gedung B",
+      buktiNotaUrl: "",
+      dicatatOleh: "Bendahara",
+    },
+    {
+      semesterId: semesterGanjil._id,
+      judul: "Konsumsi Rapat Evaluasi Kelas",
+      kategori: "Acara & Konsumsi",
+      nominal: 55000,
+      tanggalPengeluaran: new Date("2024-11-02"),
+      penanggungJawab: "Citra Lestari",
+      keterangan: "Snack dan minuman rapat pengurus kelas",
+      buktiNotaUrl: "",
       dicatatOleh: "Bendahara",
     },
   ];
 
-  await PemasukanLain.insertMany(dataPemasukanLain);
-  console.log(`✓ Berhasil memasukkan ${dataPemasukanLain.length} data pemasukan lain.`);
+  await Pengeluaran.insertMany(dataPengeluaran);
+  const totalPengeluaranNominal = dataPengeluaran.reduce((acc, c) => acc + c.nominal, 0);
+  console.log(`✓ Berhasil memasukkan ${dataPengeluaran.length} data pengeluaran kas (Rp ${totalPengeluaranNominal.toLocaleString("id-ID")}).`);
 
-  // 4. Bersihkan & Isi Data Riwayat / Audit Trail
-  console.log("\n4. Mengisi mock data audit history (PaymentHistory)...");
+  // 5. Bersihkan & Isi Data Riwayat / Audit Trail
+  console.log("\n5. Mengisi mock data audit history (PaymentHistory)...");
   await PaymentHistory.deleteMany({ semesterId: semesterGanjil._id });
 
   const now = Date.now();
@@ -191,6 +221,14 @@ async function seedData() {
       waktu: new Date(now - 5 * hari),
     },
     {
+      aksi: "EXPENSE_CREATE",
+      semesterId: semesterGanjil._id,
+      nama: "Budi Santoso",
+      nominal: 75000,
+      keterangan: "Pengeluaran kas: Fotokopi Modul Praktikum Jaringan (Akademik & Materi)",
+      waktu: new Date(now - 4 * hari),
+    },
+    {
       aksi: "UPDATE_STATUS",
       semesterId: semesterGanjil._id,
       nim: "231011400002",
@@ -202,6 +240,14 @@ async function seedData() {
       waktu: new Date(now - 3 * hari),
     },
     {
+      aksi: "EXPENSE_CREATE",
+      semesterId: semesterGanjil._id,
+      nama: "Dimas Pratama",
+      nominal: 35000,
+      keterangan: "Pengeluaran kas: Beli Spidol Whiteboard & Penghapus (Perlengkapan Kelas)",
+      waktu: new Date(now - 2 * hari),
+    },
+    {
       aksi: "UPDATE_STATUS",
       semesterId: semesterGanjil._id,
       nim: "231011400019",
@@ -211,6 +257,14 @@ async function seedData() {
       statusBaru: "Lunas",
       keterangan: "Status kas untuk Siti Aminah diubah menjadi Lunas (bayar tunai)",
       waktu: new Date(now - 1 * hari),
+    },
+    {
+      aksi: "EXPENSE_CREATE",
+      semesterId: semesterGanjil._id,
+      nama: "Ahmad Fadhil",
+      nominal: 85000,
+      keterangan: "Pengeluaran kas: Kabel HDMI & Converter Type-C Proyektor (Perlengkapan Kelas)",
+      waktu: new Date(now - 12 * jam),
     },
     {
       aksi: "UPDATE_NOMINAL",
@@ -239,16 +293,22 @@ async function seedData() {
   await PaymentHistory.insertMany(sampleHistories);
   console.log(`✓ Berhasil memasukkan ${sampleHistories.length} riwayat mutasi / audit history.`);
 
+  const totalKasLunas = 30 * 50000;
+  const totalPemasukan = totalKasLunas + totalPemasukanLainNominal;
+  const saldoBersih = totalPemasukan - totalPengeluaranNominal;
+
   console.log("\n=======================================================");
   console.log("🎉 SELURUH MOCK DATA BERHASIL DIISI KE MONGODB ATLAS!");
   console.log("=======================================================");
   console.log(`• Semester Aktif      : ${semesterGanjil.nama} (${semesterGanjil.kode})`);
   console.log(`• Mahasiswa Terdaftar : 35 orang`);
-  console.log(`• Kas Lunas           : 30 orang (Rp 1.500.000)`);
+  console.log(`• Total Kas Lunas     : Rp ${totalKasLunas.toLocaleString("id-ID")} (30 orang)`);
   console.log(`• Kas Belum Lunas     : 5 orang`);
-  console.log(`• Pemasukan Lain      : 5 transaksi (Rp 1.525.000)`);
-  console.log(`• Total Saldo Kelas   : Rp 3.025.000`);
-  console.log(`• Riwayat Mutasi      : 6 log aktivitas`);
+  console.log(`• Pemasukan Lain      : Rp ${totalPemasukanLainNominal.toLocaleString("id-ID")} (2 transaksi)`);
+  console.log(`• TOTAL PEMASUKAN     : Rp ${totalPemasukan.toLocaleString("id-ID")}`);
+  console.log(`• TOTAL PENGELUARAN   : Rp ${totalPengeluaranNominal.toLocaleString("id-ID")} (4 transaksi)`);
+  console.log(`• SALDO KAS BERSIH    : Rp ${saldoBersih.toLocaleString("id-ID")}`);
+  console.log(`• Riwayat Mutasi      : ${sampleHistories.length} log aktivitas`);
   console.log("=======================================================\n");
 }
 

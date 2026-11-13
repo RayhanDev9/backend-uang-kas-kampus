@@ -4,6 +4,7 @@ const connectDatabase = require("../src/config/db");
 const Semester = require("../src/models/Semester");
 const Kas = require("../src/models/Kas");
 const PemasukanLain = require("../src/models/PemasukanLain");
+const Pengeluaran = require("../src/models/Pengeluaran");
 const PaymentHistory = require("../src/models/PaymentHistory");
 
 async function migrate() {
@@ -17,6 +18,7 @@ async function migrate() {
     Semester.syncIndexes(),
     Kas.syncIndexes(),
     PemasukanLain.syncIndexes(),
+    Pengeluaran.syncIndexes(),
     PaymentHistory.syncIndexes(),
   ]);
   console.log("✓ Seluruh index berhasil disinkronkan.");
