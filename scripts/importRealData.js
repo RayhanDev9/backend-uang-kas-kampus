@@ -8,42 +8,45 @@ const PemasukanLain = require("../src/models/PemasukanLain");
 const Pengeluaran = require("../src/models/Pengeluaran");
 const PaymentHistory = require("../src/models/PaymentHistory");
 
-// Data Mahasiswa Semester 1 (01TPLE009)
-// Total bayar dihitung dari Pertemuan Sesi 1 (max 30.000) + Sesi 2 (max 50.000)
+// ==========================================
+// 1. DATA MAHASISWA KELAS SATU
+// File: laporan_kas_kelas_01tple009.md
+// Semester Ganjil 2025/2026 (01TPLE009)
+// ==========================================
 const rawMhsSem1 = [
-  { no: 1, nama: "ACHMAD ROBBANI", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 2, nama: "ALBERTUS GALIH DEWANTORO", bayarSesi1: 30000, bayarSesi2: 20000, refund: 11000 },
-  { no: 3, nama: "ALFAHRAS LIFAJRI", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 4, nama: "ANDRE DWI ARIFIN", bayarSesi1: 0, bayarSesi2: 0, refund: 0 },
-  { no: 5, nama: "ARDHIKA SATYA PRAMESWARA", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 6, nama: "ARKA WAHYUNEGORO", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 7, nama: "ELANG TEGAR PRATAMA", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 8, nama: "FAJAR INDRA SYUHADA", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 9, nama: "FAUZAN NAJMI ARTANSYAH", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 10, nama: "FAZRI WIRA HADI", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 11, nama: "FITRIANI ZULFA PUTRI", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 12, nama: "HUDA SETIABUDI", bayarSesi1: 30000, bayarSesi2: 10000, refund: 1000 },
-  { no: 13, nama: "IJEN", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 14, nama: "MAHARANI SEPTIYANTI", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 15, nama: "MUHAMAD RAYHAN", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 16, nama: "MUHAMAD RIO", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 17, nama: "MUHAMMAD ALFARIZI", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 18, nama: "MUHAMMAD DAFFA RABBANNII", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 19, nama: "MUHAMMAD HAFIZ HIMAWAN", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 20, nama: "MUHAMMAD NUR FADHILLAH", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 21, nama: "MUHAMMAD RIDWAN", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 22, nama: "RAIKAL FAREL JULIANSYAH", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 23, nama: "RASYA FADILLAH", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 24, nama: "RAZWA BARA", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 25, nama: "RUSSEL RIZKI PRATAMA", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 26, nama: "SAHRUL RAMADHAN", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 27, nama: "SANDI", bayarSesi1: 30000, bayarSesi2: 25000, refund: 16000 },
-  { no: 28, nama: "SANDY ISMAWAN", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 29, nama: "SANJAI MANGASI SIREGAR", bayarSesi1: 30000, bayarSesi2: 40000, refund: 31000 },
-  { no: 30, nama: "SULTAN ALAMSYAH", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 31, nama: "SYALWA KHUMAINI", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 32, nama: "TARUNA TRI SAHID", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
-  { no: 33, nama: "WIJI LESTARI", bayarSesi1: 30000, bayarSesi2: 50000, refund: 45000 },
+  { no: 1, nama: "ACHMAD ROBBANI", bayar: 50000, refund: 45000 },
+  { no: 2, nama: "ALBERTUS GALIH DEWANTORO", bayar: 20000, refund: 11000 },
+  { no: 3, nama: "ALFAHRAS LIFAJRI", bayar: 50000, refund: 45000 },
+  { no: 4, nama: "ANDRE DWI ARIFIN", bayar: 0, refund: 0 },
+  { no: 5, nama: "ARDHIKA SATYA PRAMESWARA", bayar: 50000, refund: 45000 },
+  { no: 6, nama: "ARKA WAHYUNEGORO", bayar: 50000, refund: 45000 },
+  { no: 7, nama: "ELANG TEGAR PRATAMA", bayar: 50000, refund: 45000 },
+  { no: 8, nama: "FAJAR INDRA SYUHADA", bayar: 50000, refund: 45000 },
+  { no: 9, nama: "FAUZAN NAJMI ARTANSYAH", bayar: 50000, refund: 45000 },
+  { no: 10, nama: "FAZRI WIRA HADI", bayar: 50000, refund: 45000 },
+  { no: 11, nama: "FITRIANI ZULFA PUTRI", bayar: 50000, refund: 45000 },
+  { no: 12, nama: "HUDA SETIABUDI", bayar: 10000, refund: 1000 },
+  { no: 13, nama: "IJEN", bayar: 50000, refund: 45000 },
+  { no: 14, nama: "MAHARANI SEPTIYANTI", bayar: 50000, refund: 45000 },
+  { no: 15, nama: "MUHAMAD RAYHAN", bayar: 50000, refund: 45000 },
+  { no: 16, nama: "MUHAMAD RIO", bayar: 50000, refund: 45000 },
+  { no: 17, nama: "MUHAMMAD ALFARIZI", bayar: 50000, refund: 45000 },
+  { no: 18, nama: "MUHAMMAD DAFFA RABBANNII", bayar: 50000, refund: 45000 },
+  { no: 19, nama: "MUHAMMAD HAFIZ HIMAWAN", bayar: 50000, refund: 45000 },
+  { no: 20, nama: "MUHAMMAD NUR FADHILLAH", bayar: 50000, refund: 45000 },
+  { no: 21, nama: "MUHAMMAD RIDWAN", bayar: 50000, refund: 45000 },
+  { no: 22, nama: "RAIKAL FAREL JULIANSYAH", bayar: 50000, refund: 45000 },
+  { no: 23, nama: "RASYA FADILLAH", bayar: 50000, refund: 45000 },
+  { no: 24, nama: "RAZWA BARA", bayar: 50000, refund: 45000 },
+  { no: 25, nama: "RUSSEL RIZKI PRATAMA", bayar: 50000, refund: 45000 },
+  { no: 26, nama: "SAHRUL RAMADHAN", bayar: 50000, refund: 45000 },
+  { no: 27, nama: "SANDI", bayar: 25000, refund: 16000 },
+  { no: 28, nama: "SANDY ISMAWAN", bayar: 50000, refund: 45000 },
+  { no: 29, nama: "SANJAI MANGASI SIREGAR", bayar: 40000, refund: 31000 },
+  { no: 30, nama: "SULTAN ALAMSYAH", bayar: 50000, refund: 45000 },
+  { no: 31, nama: "SYALWA KHUMAINI", bayar: 50000, refund: 45000 },
+  { no: 32, nama: "TARUNA TRI SAHID", bayar: 50000, refund: 45000 },
+  { no: 33, nama: "WIJI LESTARI", bayar: 50000, refund: 45000 },
 ];
 
 const pengeluaranSem1 = [
@@ -54,24 +57,28 @@ const pengeluaranSem1 = [
   { tanggal: "2025-11-08", judul: "Beli Tinta Spidol", kategori: "Perlengkapan Kelas", nominal: 23000, pic: "Bendahara" },
   { tanggal: "2025-11-22", judul: "Beli Aqua + klip", kategori: "Acara & Konsumsi", nominal: 12000, pic: "Bendahara" },
   { tanggal: "2025-11-29", judul: "Beli Aqua + amplop", kategori: "Acara & Konsumsi", nominal: 4000, pic: "Bendahara" },
-  { tanggal: "2025-12-29", judul: "Sumbangan untuk ortu rio", kategori: "Sosial & Santunan", nominal: 500000, pic: "Sie Sosial" },
   { tanggal: "2025-12-06", judul: "Beli Aqua", kategori: "Acara & Konsumsi", nominal: 9000, pic: "Bendahara" },
   { tanggal: "2025-12-13", judul: "beli aqua", kategori: "Acara & Konsumsi", nominal: 9000, pic: "Bendahara" },
   { tanggal: "2025-12-13", judul: "Beli Spidol", kategori: "Perlengkapan Kelas", nominal: 20000, pic: "Bendahara" },
   { tanggal: "2025-12-20", judul: "Survei", kategori: "Lainnya", nominal: 100000, pic: "Ketua Kelas" },
+  { tanggal: "2025-12-29", judul: "Sumbangan untuk ortu rio", kategori: "Sosial & Santunan", nominal: 500000, pic: "Sie Sosial" },
 ];
 
-// Data Mahasiswa Semester 2 (02TPLE009)
+// ==========================================
+// 2. DATA MAHASISWA KELAS DUA
+// File: laporan_kas_kelas_02tple009_semester_2.md
+// Semester Genap 2025/2026 (02TPLE009)
+// ==========================================
 const rawMhsSem2 = [
   { no: 1, nama: "ACHMAD ROBBANI", bayar: 5000, refund: 0 },
   { no: 2, nama: "ANDRE JEREMIA", bayar: 70000, refund: 19000 },
-  { no: 3, nama: "ARDHIKA SATYA PRAMESWARA", bayar: 60000, refund: 19000 },
+  { no: 3, nama: "ARDHIKA SATYA PRAMESWARA", bayar: 60000, refund: 9000 },
   { no: 4, nama: "ARKA WAHYUNEGORO", bayar: 70000, refund: 19000 },
   { no: 5, nama: "ALFARAS", bayar: 70000, refund: 19000 },
   { no: 6, nama: "DANU SATYA", bayar: 70000, refund: 19000 },
   { no: 7, nama: "ELANG TEGAR PRATAMA", bayar: 15000, refund: 0 },
   { no: 8, nama: "FAJAR INDRA SYUHADA", bayar: 70000, refund: 19000 },
-  { no: 9, nama: "FAJJRI ARIEF", bayar: 55000, refund: 19000 },
+  { no: 9, nama: "FAJJRI ARIEF", bayar: 55000, refund: 4000 },
   { no: 10, nama: "FAUZAN NAJMI ARTANSYAH", bayar: 70000, refund: 19000 },
   { no: 11, nama: "FITRIANI ZULFA PUTRI", bayar: 70000, refund: 19000 },
   { no: 12, nama: "LUTFIANDI BUDIMANSYAH", bayar: 0, refund: 0 },
@@ -85,11 +92,11 @@ const rawMhsSem2 = [
   { no: 20, nama: "MUHAMMAD NUR FADHILLAH", bayar: 70000, refund: 19000 },
   { no: 21, nama: "MUHAMMAD RIDWAN", bayar: 70000, refund: 19000 },
   { no: 22, nama: "RAFLI FAHREZI", bayar: 70000, refund: 19000 },
-  { no: 23, nama: "RAIKAL FAREL JULIANSYAH", bayar: 55000, refund: 19000 },
-  { no: 24, nama: "RASYA FADILLAH", bayar: 60000, refund: 19000 },
+  { no: 23, nama: "RAIKAL FAREL JULIANSYAH", bayar: 55000, refund: 4000 },
+  { no: 24, nama: "RASYA FADILLAH", bayar: 60000, refund: 9000 },
   { no: 25, nama: "RAZWA BARA RUSMANA", bayar: 0, refund: 0 },
   { no: 26, nama: "RUSSEL RIZKI PRATAMA", bayar: 70000, refund: 19000 },
-  { no: 27, nama: "SAHRUL RAMADHAN", bayar: 55000, refund: 19000 },
+  { no: 27, nama: "SAHRUL RAMADHAN", bayar: 55000, refund: 4000 },
   { no: 28, nama: "SANDY ISMAWAN", bayar: 70000, refund: 19000 },
   { no: 29, nama: "SULTAN ALAMSYAH", bayar: 70000, refund: 19000 },
   { no: 30, nama: "SYALWA KHUMAINI", bayar: 40000, refund: 0 },
@@ -120,41 +127,45 @@ const pengeluaranSem2 = [
   { tanggal: "2026-06-27", judul: "beli air", kategori: "Acara & Konsumsi", nominal: 20000, pic: "Bendahara" },
 ];
 
-// Data Mahasiswa Semester 3 (Aktif)
+// ==========================================
+// 3. DATA MAHASISWA KELAS TIGA
+// File: laporan_kas_kelas_semester_3.md
+// Semester Ganjil 2026/2027 (02TPLE009 - AKTIF)
+// ==========================================
 const rawMhsSem3 = [
-  { no: 1, nama: "AHMAD SYAUQI", bayar: 10000 },
-  { no: 2, nama: "AL DANI", bayar: 10000 },
-  { no: 3, nama: "ANDRE JEREMIA", bayar: 20000 },
-  { no: 4, nama: "ARDHIKA SATYA PRAMESWARA", bayar: 10000 },
-  { no: 5, nama: "ARKA WAHYUNEGORO", bayar: 10000 },
-  { no: 6, nama: "DANU SATYA", bayar: 10000 },
-  { no: 7, nama: "DIMAS BAYU TIRTA", bayar: 10000 },
-  { no: 8, nama: "DONY KURNIAWAN", bayar: 10000 },
-  { no: 9, nama: "FAIZ HISAM", bayar: 10000 },
-  { no: 10, nama: "FAJAR INDRA SYUHADA", bayar: 10000 },
-  { no: 11, nama: "FAUZAN NAJMI ARTANSYAH", bayar: 10000 },
-  { no: 12, nama: "FITRIANI ZULFA PUTRI", bayar: 10000 },
-  { no: 13, nama: "MUHAMAD RAYHAN", bayar: 10000 },
-  { no: 14, nama: "MUHAMAD RIFAL", bayar: 10000 },
-  { no: 15, nama: "MUHAMAD RIO", bayar: 10000 },
-  { no: 16, nama: "MUHAMAD ZAKIATUL AKBAR", bayar: 10000 },
-  { no: 17, nama: "MUHAMMAD ALFARIZI", bayar: 10000 },
-  { no: 18, nama: "MUHAMMAD DAFFA RABBANNII", bayar: 10000 },
-  { no: 19, nama: "MUHAMMAD HAFIZ HIMAWAN", bayar: 10000 },
-  { no: 20, nama: "MUHAMMAD NUR FADHILLAH", bayar: 0 },
-  { no: 21, nama: "MUHAMMAD RIDWAN", bayar: 10000 },
-  { no: 22, nama: "RAFLI FAHREZI", bayar: 10000 },
-  { no: 23, nama: "RAIHAN ADDO GIBRAN PRIADI", bayar: 10000 },
-  { no: 24, nama: "RAIKAL FARREL JULIANSYAH", bayar: 10000 },
-  { no: 25, nama: "RASYA PADILLAH", bayar: 0 },
-  { no: 26, nama: "REZA NICO SAPUTRA", bayar: 10000 },
-  { no: 27, nama: "RUSSEL RIZKI PRATAMA", bayar: 10000 },
-  { no: 28, nama: "SAHRUL RAMADHAN", bayar: 20000 },
-  { no: 29, nama: "SANDY ISMAWAN", bayar: 10000 },
-  { no: 30, nama: "SITI LIYANI", bayar: 10000 },
-  { no: 31, nama: "SULTAN ALAMSYAH", bayar: 10000 },
-  { no: 32, nama: "WIJI LESTARI", bayar: 10000 },
-  { no: 33, nama: "WISNU MAHARDIKA", bayar: 10000 },
+  { no: 1, nama: "AHMAD SYAUQI", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 2, nama: "AL DANI", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 3, nama: "ANDRE JEREMIA", bayarUts: 10000, bayarUas: 10000, bayar: 20000 },
+  { no: 4, nama: "ARDHIKA SATYA PRAMESWARA", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 5, nama: "ARKA WAHYUNEGORO", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 6, nama: "DANU SATYA", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 7, nama: "DIMAS BAYU TIRTA", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 8, nama: "DONY KURNIAWAN", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 9, nama: "FAIZ HISAM", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 10, nama: "FAJAR INDRA SYUHADA", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 11, nama: "FAUZAN NAJMI ARTANSYAH", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 12, nama: "FITRIANI ZULFA PUTRI", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 13, nama: "MUHAMAD RAYHAN", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 14, nama: "MUHAMAD RIFAL", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 15, nama: "MUHAMAD RIO", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 16, nama: "MUHAMAD ZAKIATUL AKBAR", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 17, nama: "MUHAMMAD ALFARIZI", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 18, nama: "MUHAMMAD DAFFA RABBANNII", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 19, nama: "MUHAMMAD HAFIZ HIMAWAN", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 20, nama: "MUHAMMAD NUR FADHILLAH", bayarUts: 0, bayarUas: 0, bayar: 0 },
+  { no: 21, nama: "MUHAMMAD RIDWAN", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 22, nama: "RAFLI FAHREZI", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 23, nama: "RAIHAN ADDO GIBRAN PRIADI", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 24, nama: "RAIKAL FARREL JULIANSYAH", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 25, nama: "RASYA PADILLAH", bayarUts: 0, bayarUas: 0, bayar: 0 },
+  { no: 26, nama: "REZA NICO SAPUTRA", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 27, nama: "RUSSEL RIZKI PRATAMA", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 28, nama: "SAHRUL RAMADHAN", bayarUts: 10000, bayarUas: 10000, bayar: 20000 },
+  { no: 29, nama: "SANDY ISMAWAN", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 30, nama: "SITI LIYANI", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 31, nama: "SULTAN ALAMSYAH", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 32, nama: "WIJI LESTARI", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
+  { no: 33, nama: "WISNU MAHARDIKA", bayarUts: 10000, bayarUas: 0, bayar: 10000 },
 ];
 
 const pengeluaranSem3 = [
@@ -194,63 +205,76 @@ async function runImport() {
     PaymentHistory.deleteMany({}),
   ]);
 
-  // 1. Buat 3 Semester
+  // 1. Buat 3 Master Semester sesuai penamaan file .md
   console.log("\n1. Membuat 3 Master Semester...");
   const sem1 = await Semester.create({
-    nama: "Semester 1 (01TPLE009)",
-    kode: "2025-1",
+    nama: "Semester Ganjil 2025/2026",
+    kode: "2025-GANJIL",
     isAktif: false,
-    targetKasPerMhs: 80000,
+    targetKasPerMhs: 50000,
     tanggalMulai: new Date("2025-09-20"),
-    tanggalSelesai: new Date("2026-01-31"),
+    tanggalSelesai: new Date("2025-12-29"),
   });
 
   const sem2 = await Semester.create({
-    nama: "Semester 2 (02TPLE009)",
-    kode: "2026-1",
+    nama: "Semester Genap 2025/2026",
+    kode: "2025-GENAP",
     isAktif: false,
     targetKasPerMhs: 70000,
     tanggalMulai: new Date("2026-03-07"),
-    tanggalSelesai: new Date("2026-07-04"),
+    tanggalSelesai: new Date("2026-06-27"),
   });
 
   const sem3 = await Semester.create({
-    nama: "Semester 3 (02TPLE009)",
-    kode: "2026-2",
+    nama: "Semester Ganjil 2026/2027",
+    kode: "2026-GANJIL",
     isAktif: true,
-    targetKasPerMhs: 10000,
+    targetKasPerMhs: 20000,
     tanggalMulai: new Date("2026-07-07"),
-    tanggalSelesai: new Date("2026-12-31"),
+    tanggalSelesai: new Date("2026-11-14"),
   });
-  console.log("✓ Semester 1, 2, dan 3 berhasil dibuat. Semester 3 berstatus AKTIF.");
+  console.log("✓ Semester 1 (Ganjil 2025/2026), 2 (Genap 2025/2026), dan 3 (Ganjil 2026/2027 Aktif) berhasil dibuat.");
 
   // ================= SEMESTER 1 =================
-  console.log("\n2. Mengisi data Semester 1...");
+  console.log("\n2. Mengisi data Semester Ganjil 2025/2026 (01TPLE009)...");
   const kasSem1 = rawMhsSem1.map((m) => {
-    const totalBayar = m.bayarSesi1 + m.bayarSesi2;
-    const isLunas = totalBayar >= 80000;
+    const isLunas = m.bayar >= 50000;
     return {
       semesterId: sem1._id,
       nim: generateMaskedNim(m.no),
       nama: m.nama,
-      periode: "September - Desember 2025",
-      nominal: totalBayar,
+      periode: "11 Okt – 20 Des 2025",
+      nominal: m.bayar,
       status: isLunas ? "Lunas" : "Belum Lunas",
       metodePembayaran: "Tunai",
-      tanggalBayar: new Date("2025-10-15"),
+      tanggalBayar: new Date("2025-11-15"),
     };
   });
   await Kas.insertMany(kasSem1);
 
-  await PemasukanLain.create({
-    semesterId: sem1._id,
-    judul: "Uang sisa pembayaran seminar agama",
-    kategori: "Lainnya",
-    nominal: 15000,
-    tanggalMasuk: new Date("2025-11-15"),
-    dicatatOleh: "Bendahara",
-    keterangan: "Sisa pembayaran seminar agama kelas",
-  });
+  // Pemasukan Lain Semester 1:
+  // Kas Masuk Periode Awal (Rp 960.000) + Sisa Seminar Agama (Rp 15.000)
+  const pemasukanSem1Data = [
+    {
+      semesterId: sem1._id,
+      judul: "Kas Masuk Periode Awal (20 Sept – 04 Okt 2025)",
+      kategori: "Dana Usaha",
+      nominal: 960000,
+      tanggalMasuk: new Date("2025-10-04"),
+      dicatatOleh: "Bendahara",
+      keterangan: "Akumulasi kas masuk sesi 1 kelas (3 pertemuan x Rp 320.000)",
+    },
+    {
+      semesterId: sem1._id,
+      judul: "Uang sisa pembayaran seminar agama",
+      kategori: "Lainnya",
+      nominal: 15000,
+      tanggalMasuk: new Date("2025-11-15"),
+      dicatatOleh: "Bendahara",
+      keterangan: "Sisa pembayaran seminar agama kelas",
+    },
+  ];
+  await PemasukanLain.insertMany(pemasukanSem1Data);
 
   const pengeluaran1Data = pengeluaranSem1.map((p) => ({
     semesterId: sem1._id,
@@ -264,14 +288,14 @@ async function runImport() {
   await Pengeluaran.insertMany(pengeluaran1Data);
 
   // ================= SEMESTER 2 =================
-  console.log("\n3. Mengisi data Semester 2...");
+  console.log("\n3. Mengisi data Semester Genap 2025/2026 (02TPLE009)...");
   const kasSem2 = rawMhsSem2.map((m) => {
     const isLunas = m.bayar >= 70000;
     return {
       semesterId: sem2._id,
       nim: generateMaskedNim(m.no),
       nama: m.nama,
-      periode: "Maret - Juli 2026",
+      periode: "07 Mar – 27 Jun 2026",
       nominal: m.bayar,
       status: isLunas ? "Lunas" : "Belum Lunas",
       metodePembayaran: "Tunai",
@@ -292,51 +316,33 @@ async function runImport() {
   await Pengeluaran.insertMany(pengeluaran2Data);
 
   // ================= SEMESTER 3 (AKTIF) =================
-  console.log("\n4. Mengisi data Semester 3 (Aktif)...");
+  console.log("\n4. Mengisi data Semester Ganjil 2026/2027 (Aktif)...");
   const kasSem3 = rawMhsSem3.map((m) => {
-    const isLunas = m.bayar >= 10000;
+    const isLunas = m.bayar >= 20000;
     return {
       semesterId: sem3._id,
       nim: generateMaskedNim(m.no),
       nama: m.nama,
-      periode: "Juli - Desember 2026",
+      periode: "Semester Ganjil 2026/2027",
       nominal: m.bayar,
       status: isLunas ? "Lunas" : "Belum Lunas",
       metodePembayaran: "Tunai",
-      tanggalBayar: new Date("2026-09-19"),
+      tanggalBayar: m.bayarUas > 0 ? new Date("2026-10-20") : new Date("2026-09-19"),
     };
   });
   await Kas.insertMany(kasSem3);
 
   // Pemasukan Lain Semester 3:
-  // Sisa Semester 1 & 2 = 90.000 + Kas UTS 310.000 + Kas UAS 20.000
+  // HANYA Saldo Awal Sisa Kas Semester Lalu (Rp 90.000). Tidak ada duplikasi Kas UTS/UAS!
   const pemasukanSem3Data = [
     {
       semesterId: sem3._id,
-      judul: "KAS SEMESTER 2 & 1 (Sisa Saldo Lalu)",
+      judul: "KAS SEMESTER 2&1 (Saldo Awal)",
       kategori: "Sisa Semester Lalu",
       nominal: 90000,
       tanggalMasuk: new Date("2026-07-07"),
       dicatatOleh: "Bendahara",
       keterangan: "Sisa saldo kas semester 1 dan semester 2 yang dialihkan ke semester 3",
-    },
-    {
-      semesterId: sem3._id,
-      judul: "Kas Masuk UTS",
-      kategori: "Dana Usaha",
-      nominal: 310000,
-      tanggalMasuk: new Date("2026-09-19"),
-      dicatatOleh: "Bendahara",
-      keterangan: "Kas tambahan periode Ujian Tengah Semester",
-    },
-    {
-      semesterId: sem3._id,
-      judul: "Kas Masuk UAS",
-      kategori: "Dana Usaha",
-      nominal: 20000,
-      tanggalMasuk: new Date("2026-10-20"),
-      dicatatOleh: "Bendahara",
-      keterangan: "Kas tambahan periode Ujian Akhir Semester",
     },
   ];
   await PemasukanLain.insertMany(pemasukanSem3Data);
@@ -352,13 +358,13 @@ async function runImport() {
   }));
   await Pengeluaran.insertMany(pengeluaran3Data);
 
-  // Buat Log Riwayat Audit
-  const sampleHistories = [
+  // Buat Riwayat Audit Log
+  const auditLogs = [
     {
       semesterId: sem3._id,
       aksi: "IMPORT_EXCEL",
       nama: "Bendahara",
-      keterangan: "Import data kas mahasiswa kelas 02TPLE009",
+      keterangan: "Inisialisasi data buku kas kelas Semester Ganjil 2026/2027",
       waktu: new Date("2026-07-07"),
     },
     {
@@ -368,8 +374,8 @@ async function runImport() {
       nama: "ANDRE JEREMIA",
       nominal: 20000,
       statusBaru: "Lunas",
-      keterangan: "Pembayaran kas mahasiswa Rp 20.000",
-      waktu: new Date("2026-09-19"),
+      keterangan: "Pembayaran kas mahasiswa (Kas UTS Rp10.000 + Kas UAS Rp10.000)",
+      waktu: new Date("2026-10-20"),
     },
     {
       semesterId: sem3._id,
@@ -388,14 +394,14 @@ async function runImport() {
       waktu: new Date("2026-10-17"),
     },
   ];
-  await PaymentHistory.insertMany(sampleHistories);
+  await PaymentHistory.insertMany(auditLogs);
 
   console.log("\n=======================================================");
-  console.log("🎉 SELURUH DATA REAL TELAH BERHASIL DI-IMPORT KE ATLAS!");
+  console.log("🎉 SELURUH DATA DARI FILE .MD BERHASIL DISINKRONISASI!");
   console.log("=======================================================");
-  console.log("• Semester 1: 33 Mahasiswa, 12 Pengeluaran, 1 Pemasukan Lain");
-  console.log("• Semester 2: 33 Mahasiswa, 19 Pengeluaran, Saldo Sisa Di-refund & Sisa 90k ke Sem 3");
-  console.log("• Semester 3: 33 Mahasiswa, 15 Pengeluaran, Sisa Lalu Rp 90k + Kas UTS/UAS");
+  console.log("• Semester Ganjil 2025/2026 (01TPLE009): 33 Mhs, Masuk 2.470k, Keluar 1.151k, Saldo Riil 1.319k (Refund Selesai)");
+  console.log("• Semester Genap 2025/2026 (02TPLE009): 33 Mhs, Masuk 1.825k, Keluar 1.265k, Saldo Buku 560k, Sisa 90k ke Sem 3");
+  console.log("• Semester Ganjil 2026/2027 (Aktif): 33 Mhs, Saldo Awal 90k, Kas Mhs 330k, Total Masuk 420k, Keluar 271k, Saldo Akhir 149k");
   console.log("• Format NIM: 251******01 s/d 251******33");
   console.log("=======================================================\n");
 
@@ -415,18 +421,18 @@ async function runImport() {
   // Sheet 1: Ringkasan Saldo Antar Semester
   const wsSummary = workbook.addWorksheet("Ringkasan Kas");
   wsSummary.columns = [
-    { header: "Keterangan Semester", key: "desc", width: 32 },
+    { header: "Keterangan Semester", key: "desc", width: 34 },
     { header: "Total Pemasukan", key: "in", width: 20 },
     { header: "Total Pengeluaran", key: "out", width: 20 },
     { header: "Pengembalian (Refund)", key: "ref", width: 24 },
     { header: "Sisa Saldo Kas", key: "balance", width: 20 },
-    { header: "Status / Catatan", key: "status", width: 35 },
+    { header: "Status / Catatan", key: "status", width: 45 },
   ];
   applyHeader(wsSummary, "FF1E293B");
 
   const summaryData = [
     {
-      desc: "Semester 1 (01TPLE009)",
+      desc: "Semester Ganjil 2025/2026",
       in: 2470000,
       out: 1151000,
       ref: 1319000,
@@ -434,20 +440,20 @@ async function runImport() {
       status: "Selesai - Sisa dana 100% dibagikan kembali ke mahasiswa",
     },
     {
-      desc: "Semester 2 (02TPLE009)",
+      desc: "Semester Genap 2025/2026",
       in: 1825000,
       out: 1265000,
-      ref: 494000,
-      balance: 66000,
-      status: "Selesai - Sisa tabel 560k dibagi refund 494k, sisa 90k ke Sem 3",
+      ref: 410000,
+      balance: 150000,
+      status: "Selesai - Sisa tabel 560k, dikembalikan, sisa nyata bendahara 90k ke Sem 3",
     },
     {
-      desc: "Semester 3 (02TPLE009 - AKTIF)",
-      in: 750000,
+      desc: "Semester Ganjil 2026/2027 (AKTIF)",
+      in: 420000,
       out: 271000,
       ref: 0,
-      balance: 479000,
-      status: "Aktif Berjalan (Saldo lalu 90k + Kas 330k + UTS 310k + UAS 20k)",
+      balance: 149000,
+      status: "Aktif Berjalan (Saldo awal 90k + Kas Mhs 330k - Pengeluaran 271k)",
     },
   ];
   summaryData.forEach((item) => {
@@ -459,11 +465,13 @@ async function runImport() {
   });
 
   // Sheet 2: Semester 3 (Aktif)
-  const wsSem3 = workbook.addWorksheet("Semester 3 (Aktif)");
+  const wsSem3 = workbook.addWorksheet("Semester Ganjil 2026-2027");
   wsSem3.columns = [
     { header: "No", key: "no", width: 8 },
     { header: "NIM", key: "nim", width: 20 },
     { header: "Nama Mahasiswa", key: "nama", width: 32 },
+    { header: "Kas UTS", key: "uts", width: 16 },
+    { header: "Kas UAS", key: "uas", width: 16 },
     { header: "Total Bayar", key: "bayar", width: 18 },
     { header: "Status", key: "status", width: 18 },
   ];
@@ -473,14 +481,18 @@ async function runImport() {
       no: m.no,
       nim: generateMaskedNim(m.no),
       nama: m.nama,
+      uts: m.bayarUts,
+      uas: m.bayarUas,
       bayar: m.bayar,
-      status: m.bayar >= 10000 ? "Lunas" : "Belum Lunas",
+      status: m.bayar >= 20000 ? "Lunas" : "Belum Lunas",
     });
+    row.getCell("uts").numFmt = '"Rp" #,##0';
+    row.getCell("uas").numFmt = '"Rp" #,##0';
     row.getCell("bayar").numFmt = '"Rp" #,##0';
   });
 
   // Sheet 3: Pengeluaran Semester 3
-  const wsOut3 = workbook.addWorksheet("Pengeluaran Semester 3");
+  const wsOut3 = workbook.addWorksheet("Pengeluaran Sem Ganjil 26-27");
   wsOut3.columns = [
     { header: "Tanggal", key: "tgl", width: 18 },
     { header: "Keperluan", key: "judul", width: 32 },
@@ -520,7 +532,7 @@ async function runImport() {
   });
 
   // Sheet 5: Semester 2
-  const wsSem2 = workbook.addWorksheet("Semester 2 (02TPLE009)");
+  const wsSem2 = workbook.addWorksheet("Semester Genap 2025-2026");
   wsSem2.columns = [
     { header: "No", key: "no", width: 8 },
     { header: "NIM", key: "nim", width: 20 },
@@ -542,7 +554,7 @@ async function runImport() {
   });
 
   // Sheet 6: Pengeluaran Semester 2
-  const wsOut2 = workbook.addWorksheet("Pengeluaran Semester 2");
+  const wsOut2 = workbook.addWorksheet("Pengeluaran Sem Genap 25-26");
   wsOut2.columns = [
     { header: "Tanggal", key: "tgl", width: 18 },
     { header: "Keperluan", key: "judul", width: 35 },
@@ -563,7 +575,7 @@ async function runImport() {
   });
 
   // Sheet 7: Semester 1
-  const wsSem1 = workbook.addWorksheet("Semester 1 (01TPLE009)");
+  const wsSem1 = workbook.addWorksheet("Semester Ganjil 2025-2026");
   wsSem1.columns = [
     { header: "No", key: "no", width: 8 },
     { header: "NIM", key: "nim", width: 20 },
@@ -577,7 +589,7 @@ async function runImport() {
       no: m.no,
       nim: generateMaskedNim(m.no),
       nama: m.nama,
-      bayar: m.bayarSesi1 + m.bayarSesi2,
+      bayar: m.bayar,
       ref: m.refund,
     });
     row.getCell("bayar").numFmt = '"Rp" #,##0';
@@ -585,7 +597,7 @@ async function runImport() {
   });
 
   // Sheet 8: Pengeluaran Semester 1
-  const wsOut1 = workbook.addWorksheet("Pengeluaran Semester 1");
+  const wsOut1 = workbook.addWorksheet("Pengeluaran Sem Ganjil 25-26");
   wsOut1.columns = [
     { header: "Tanggal", key: "tgl", width: 18 },
     { header: "Keperluan", key: "judul", width: 35 },
