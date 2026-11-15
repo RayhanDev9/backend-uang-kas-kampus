@@ -188,9 +188,8 @@ const pengeluaranSem3 = [
   { tanggal: "2026-11-14", judul: "BELI KLIP KERTAS", kategori: "Perlengkapan Kelas", nominal: 5000, pic: "Bendahara" },
 ];
 
-function generateMaskedNim(no) {
-  const pad = String(no).padStart(2, "0");
-  return `251******${pad}`;
+function generateMaskedNim() {
+  return "251*********";
 }
 
 async function runImport() {
