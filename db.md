@@ -1,20 +1,18 @@
 # 🗄️ Database Architecture, Schemas & Integrity Rules (`db.md`)
 
-Dokumen spesifikasi arsitektur basis data MongoDB (Mongoose) untuk aplikasi **KasKita**. Dokumen ini mencakup model multi-semester, pencatatan kas mahasiswa, pemasukan non-kas, **pengeluaran kas kelas (termasuk modul Pengembalian Kas / Refund - Opsi 1)**, dan log riwayat audit transaksi.
+Dokumen spesifikasi arsitektur basis data MongoDB (Mongoose) untuk aplikasi **KasKita**. Dokumen ini mencakup model multi-semester, pencatatan kas mahasiswa (termasuk **Fitur Matriks Absensi Mingguan untuk Semester 1 & 2**), pemasukan non-kas, **pengeluaran kas kelas (termasuk modul Pengembalian Kas / Refund)**, dan log riwayat audit transaksi.
 
 ---
 
-## 📌 Ringkasan Solusi: Pengembalian Kas via Modul Pengeluaran (Opsi 1)
+## 📌 Ringkasan Solusi Desain
 
-Sesuai kesepakatan **Opsi 1 (Paling Simpel & Standar Pembukuan Kas)**:
-* Uang kas yang dibagikan/dikembalikan ke mahasiswa di akhir semester dicatat resmi ke dalam koleksi **`Pengeluaran`** dengan kategori khusus: **`"Pengembalian Kas"`**.
-* **Keuntungan Arsitektural**:
-  1. **Tidak merusak atau mengubah struktur koleksi `Kas`** yang sudah rapi mencatat pembayaran mahasiswa.
-  2. **Buku kas kronologis balance 100%**: Setiap rupiah yang keluar dari kas fisik bendahara tercatat sebagai arus kas keluar (`Cash Out`).
-  3. **Saldo kas di frontend otomatis presisi**:
-     * **Semester Ganjil 2025/2026**: Masuk $\text{Rp}2.470.000$ $-$ Belanja $\text{Rp}1.151.000$ $-$ Pengembalian $\text{Rp}1.319.000$ = **Saldo Kas $\text{Rp}0$** *(selesai & balance)*.
-     * **Semester Genap 2025/2026**: Masuk $\text{Rp}1.825.000$ $-$ Belanja $\text{Rp}1.265.000$ $-$ Pengembalian $\text{Rp}470.000$ = **Saldo Kas $\text{Rp}90.000$** *(pas dengan saldo awal yang dialihkan ke Semester 3)*.
-     * **Semester Ganjil 2026/2027 (Aktif)**: Saldo Awal $\text{Rp}90.000$ + Kas Mhs $\text{Rp}330.000$ $-$ Belanja $\text{Rp}271.000$ = **Saldo Kas $\text{Rp}149.000$**.
+1. **Dual Mode Iuran (Mingguan vs Sekali Bayar)**:
+   * **Semester 1 & 2**: Menganut model `tipeIuran: "MINGGUAN"`. Setiap mahasiswa memiliki rincian riwayat centang bayar per pertemuan mingguan (`detailMingguan`).
+   * **Semester 3 ke Atas**: Menganut model `tipeIuran: "SEKALI_BAYAR"`. Pembayaran dilakukan flat (1 atau 2 kali saat UTS/UAS), tidak memerlukan kolom mingguan.
+2. **Pemisahan Uang Non-Iuran**:
+   * Uang yang masuk bukan dari iuran mingguan (Sisa Saldo Kas Lalu, Sponsor, Dana Usaha, Sisa Seminar) **TIDAK DICAMPUR** ke kolom absensi mahasiswa, melainkan dicatat murni di koleksi **`PemasukanLain`**.
+3. **Pengembalian Kas (Refund - Opsi 1)**:
+   * Uang sisa kas yang dikembalikan ke mahasiswa dicatat resmi di koleksi **`Pengeluaran`** dengan kategori **`"Pengembalian Kas"`**.
 
 ---
 
@@ -32,6 +30,8 @@ erDiagram
         string nama "Semester Ganjil 2025/2026, dll"
         string kode "2025-GANJIL, unik"
         boolean isAktif "hanya 1 true di seluruh DB"
+        string tipeIuran "MINGGUAN | SEKALI_BAYAR"
+        array daftarPertemuan "Daftar tanggal pertemuan (khusus MINGGUAN)"
         number targetKasPerMhs "Target iuran per mhs"
         date tanggalMulai
         date tanggalSelesai
@@ -45,9 +45,11 @@ erDiagram
         string nim "Format masked: 251******01"
         string nama "Nama lengkap mahasiswa"
         string periode "Periode pembayaran"
-        number nominal "Nominal kas masuk"
+        number nominal "Total uang kas masuk"
         string status "Lunas | Belum Lunas"
         string metodePembayaran "Tunai | Transfer | QRIS"
+        number refund "Nominal uang yang dikembalikan (jika ada)"
+        array detailMingguan "Array centang bayar [pertemuanKe, tanggal, bayar, nominal]"
         date tanggalBayar
         date createdAt
         date updatedAt
@@ -102,6 +104,15 @@ erDiagram
 ```javascript
 const mongoose = require("mongoose");
 
+const pertemuanSubSchema = new mongoose.Schema(
+  {
+    pertemuanKe: { type: Number, required: true },
+    tanggal: { type: String, required: true }, // Format tampilan: "07/03" atau "YYYY-MM-DD"
+    label: { type: String, default: "" },      // Label opsional: "Minggu 1", "UTS", "UAS"
+  },
+  { _id: false }
+);
+
 const semesterSchema = new mongoose.Schema(
   {
     nama: {
@@ -121,6 +132,12 @@ const semesterSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    tipeIuran: {
+      type: String,
+      enum: ["MINGGUAN", "SEKALI_BAYAR"],
+      default: "SEKALI_BAYAR",
+    },
+    daftarPertemuan: [pertemuanSubSchema], // Terisi untuk Semester 1 & 2, kosong untuk Semester 3
     targetKasPerMhs: {
       type: Number,
       required: [true, "Target kas per mahasiswa wajib diisi"],
@@ -145,8 +162,21 @@ module.exports = mongoose.models.Semester || mongoose.model("Semester", semester
 ---
 
 ### B. Model Kas Mahasiswa (`src/models/Kas.js`)
+> [!IMPORTANT]
+> Ditambahkan field opsional `detailMingguan` untuk menampung riwayat absensi mingguan per pertemuan (Semester 1 & 2), dan `refund` untuk pencatatan nominal pengembalian kas per mahasiswa.
+
 ```javascript
 const mongoose = require("mongoose");
+
+const detailMingguanSubSchema = new mongoose.Schema(
+  {
+    pertemuanKe: { type: Number, required: true },
+    tanggal: { type: String, required: true },
+    bayar: { type: Boolean, default: false },   // true = centang hijau ✓, false = strip -
+    nominal: { type: Number, default: 5000 },
+  },
+  { _id: false }
+);
 
 const kasSchema = new mongoose.Schema(
   {
@@ -189,6 +219,15 @@ const kasSchema = new mongoose.Schema(
       enum: ["Transfer", "QRIS", "Tunai"],
       default: "Tunai",
     },
+    refund: {
+      type: Number,
+      default: 0,
+      min: [0, "Refund tidak boleh negatif"],
+    },
+    detailMingguan: {
+      type: [detailMingguanSubSchema],
+      default: [], // Kosong untuk semester sekali bayar (Semester 3 ke atas)
+    },
     tanggalBayar: {
       type: Date,
       default: Date.now,
@@ -205,18 +244,15 @@ module.exports = mongoose.models.Kas || mongoose.model("Kas", kasSchema);
 ---
 
 ### C. Model Pengeluaran Kas (`src/models/Pengeluaran.js`)
-> [!IMPORTANT]
-> Enum `kategori` diperbarui dengan menambahkan nilai **`"Pengembalian Kas"`** untuk mengakomodasi pencatatan pembagian uang kas kembali ke mahasiswa (Opsi 1).
-
 ```javascript
 const mongoose = require("mongoose");
 
 const VALID_KATEGORI_PENGELUARAN = [
-  "Pengembalian Kas",       // BARU: Pengembalian sisa kas ke mahasiswa di akhir semester
+  "Pengembalian Kas",       // Pengembalian sisa kas ke mahasiswa di akhir semester (Refund)
   "Perlengkapan Kelas",     // Spidol, kabel, colokan, pengharum
-  "Acara & Konsumsi",       // Air minum dosen, konsumsi rapat
-  "Akademik & Materi",      // Print absen, fotokopi materi
-  "Sosial & Santunan",      // Sumbangan teman sakit/duka
+  "Acara & Konsumsi",       // Air minum dosen, konsumsi kelas
+  "Akademik & Materi",      // Print absen, fotokopi modul
+  "Sosial & Santunan",      // Sumbangan duka/sakit
   "Lainnya",
 ];
 
@@ -395,26 +431,19 @@ module.exports = mongoose.models.PaymentHistory || mongoose.model("PaymentHistor
 
 ---
 
-## 3. Aturan & Integritas Basis Data (Integrity Rules)
+## 3. Aturan Integritas Data (Integrity Rules)
 
-1. **Aturan Semester Aktif Tunggal**:
-   Hanya boleh ada **tepat satu** dokumen di koleksi `Semester` yang memiliki `isAktif: true`. Setiap operasi aktivasi semester harus menonaktifkan semester lainnya terlebih dahulu (`Semester.updateMany({}, { isAktif: false })`).
+1. **Aturan Sinkronisasi Absensi Mingguan**:
+   * Jika bendahara mencentang/membatalkan centang pada `detailMingguan`:
+     $$\text{Nominal Kas Baru} = \sum (\text{Nominal Pertemuan yang } \text{bayar} == \text{true})$$
+   * Status kelunasan di-update secara reaktif:
+     $$\text{Status} = \begin{cases} \text{"Lunas"}, & \text{jika } \text{Nominal Kas} \ge \text{Target Kas Semester} \\ \text{"Belum Lunas"}, & \text{sebaliknya} \end{cases}$$
 
-2. **Kalkulasi Saldo Kas Konsolidasi (Net Real Balance)**:
-   $$\text{Total Kas Mahasiswa} = \sum (\text{Nominal Kas Seluruh Mahasiswa})$$
-   $$\text{Total Pemasukan} = \text{Total Kas Mahasiswa} + \sum (\text{Nominal Pemasukan Lain})$$
-   $$\text{Total Pengeluaran Operasional} = \sum (\text{Nominal Pengeluaran Kategori Non-Pengembalian})$$
-   $$\text{Total Uang Dikembalikan} = \sum (\text{Nominal Pengeluaran Kategori 'Pengembalian Kas'})$$
-   $$\text{Total Pengeluaran Keseluruhan} = \text{Total Pengeluaran Operasional} + \text{Total Uang Dikembalikan}$$
-   $$\text{Saldo Kas Riil Saat Ini} = \text{Total Pemasukan} - \text{Total Pengeluaran Keseluruhan}$$
+2. **Aturan Pemisahan Pemasukan Non-Iuran**:
+   * Pemasukan seperti *Sisa Saldo Kas Lalu* atau *Sisa Seminar* **hanya disimpan di koleksi `PemasukanLain`**.
+   * Hal ini menjamin bahwa jumlah total kolom absensi mahasiswa murni berasal dari iuran kelas.
 
-   > [!NOTE]
-   > Uang cicilan dari mahasiswa yang berstatus "Belum Lunas" tetap dihitung penuh ke dalam `Total Kas Mahasiswa` karena uang fisik tersebut telah diterima bendahara kelas.
-
-3. **Validasi Defisit (Pencegahan Kas Bon)**:
-   Saat membuat dokumen `Pengeluaran` baru, backend memvalidasi:
-   $$\text{Nominal Pengeluaran Baru} \le \text{Saldo Kas Riil Saat Ini}$$
-   Jika melebihi saldo kas riil, request ditolak dengan pesan HTTP 400.
-
-4. **Immutability Riwayat Mutasi**:
-   Dokumen di koleksi `PaymentHistory` bersifat *append-only* (hanya boleh dibuat dan dibaca). Setiap pencatatan pengeluaran refund dicatat dengan aksi `EXPENSE_CREATE`.
+3. **Kalkulasi Saldo Kas Konsolidasi**:
+   $$\text{Total Pemasukan} = \sum (\text{Kas Mahasiswa}) + \sum (\text{Pemasukan Lain})$$
+   $$\text{Total Pengeluaran} = \sum (\text{Pengeluaran Belanja}) + \sum (\text{Pengeluaran Refund})$$
+   $$\text{Saldo Kas Riil} = \text{Total Pemasukan} - \text{Total Pengeluaran}$$
