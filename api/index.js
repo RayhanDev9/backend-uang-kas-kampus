@@ -10,6 +10,7 @@ const pemasukanLainRoutes = require("../src/routes/pemasukanLainRoutes");
 const pengeluaranRoutes = require("../src/routes/pengeluaranRoutes");
 const historyRoutes = require("../src/routes/historyRoutes");
 const excelRoutes = require("../src/routes/excelRoutes");
+const analyticsRoutes = require("../src/routes/analyticsRoutes");
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use("/api/pemasukan-lain", pemasukanLainRoutes);
 app.use("/api/pengeluaran", pengeluaranRoutes);
 app.use("/api/history", historyRoutes);
 app.use("/api/kas", kasRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
