@@ -19,6 +19,12 @@ Dokumen spesifikasi teknis antarmuka Vue 3, TanStack Query, dan Tailwind CSS unt
 4. **Penyajian Transparan Pengembalian Kas (Refund - Opsi 1)**:
    * Menampilkan kartu saldo riil bendahara (Rp 0 di Sem 1, Rp 90.000 di Sem 2, Rp 149.000 di Sem 3 aktif).
    * Menampilkan badge informasi pengembalian dana pada kartu pengeluaran (*"Rp 470.000 dikembalikan ke mahasiswa"*).
+5. **Autentikasi Rahasia Bendahara & Token LocalStorage (Opsi B)**:
+   * **Sembunyikan Pintu Masuk Publik**: Tombol `[Ruang Bendahara]` di Navbar disembunyikan secara default untuk umum/mahasiswa.
+   * **Pintu Rahasia Footer**: Di bagian footer paling bawah terdapat teks/ikon kecil samar (`🔒 Akses Bendahara`). Ketika diklik, modal input PIN terbuka.
+   * **Persistent Token**: Setelah login sukses, token sesi disimpan di `localStorage.setItem('bendahara_token', token)`. Tombol `[Ruang Bendahara]` otomatis muncul di Navbar.
+   * **Bebas Ketik PIN Berulang**: Seluruh operasi di Ruang Bendahara (centang absensi, tambah kas, catat belanja/refund) otomatis mengonsumsi token dari `localStorage`.
+   * **Tombol Logout**: Bendahara dapat keluar kapan saja; token dibersihkan dan tombol di Navbar kembali lenyap.
 
 ---
 
@@ -27,6 +33,7 @@ Dokumen spesifikasi teknis antarmuka Vue 3, TanStack Query, dan Tailwind CSS unt
 ```text
 src/
 ├── composables/
+│   ├── useAuth.js              (BARU: State login bendahara, simpan/hapus token localStorage)
 │   ├── useKas.js               (Query data kas, ringkasan saldo & rincian refund)
 │   ├── useKasMatrix.js         (Query matriks mingguan & mutasi update centang pertemuan)
 │   ├── useSemester.js          (State global semester aktif & daftar semester)
@@ -34,18 +41,20 @@ src/
 │   ├── usePengeluaran.js       (Query & mutasi belanja kas & pengembalian kas / refund)
 │   └── useHistory.js           (Query timeline audit mutasi)
 ├── components/
-│   ├── Navbar.vue              (SemesterSwitcher, link navigasi & pemicu HistoryDrawer)
+│   ├── Navbar.vue              (Filter dinamis tombol Ruang Bendahara berdasarkan useAuth)
+│   ├── Footer.vue              (BARU: Footer dengan link rahasia "🔒 Akses Bendahara")
+│   ├── AuthModal.vue           (BARU: Modal input PIN login bendahara)
 │   ├── SemesterSwitcher.vue    (Dropdown pemilih semester aktif/arsip)
 │   ├── StatCards.vue           (3 Kartu: Saldo Bersih Riil, Total Pemasukan, Total Pengeluaran & Refund)
 │   ├── KasTable.vue            (Tabel ringkas: No, NIM, Nama, Nominal, Status)
-│   ├── KasMatrixTable.vue      (BARU: Tabel matriks mingguan bergaya Excel dengan frozen columns)
-│   ├── PemasukanLainTable.vue  (BARU: Mini-tabel terpisah untuk dana non-iuran)
+│   ├── KasMatrixTable.vue      (Tabel matriks mingguan bergaya Excel dengan frozen columns)
+│   ├── PemasukanLainTable.vue  (Mini-tabel terpisah untuk dana non-iuran)
 │   ├── KasFormModal.vue        (Modal tambah/edit data mahasiswa)
 │   ├── HistoryDrawer.vue       (Laci timeline audit mutasi masuk, belanja & refund)
 │   └── KasImportModal.vue      (Modal upload file Excel/CSV)
 └── views/
     ├── DashboardView.vue       (Dasbor publik: StatCards, Toggle Tampilan, KasTable / KasMatrixTable)
-    ├── AdminView.vue           (Ruang Bendahara: Mode edit matriks, Tab Pengeluaran, Non-Kas, Semester)
+    ├── AdminView.vue           (Ruang Bendahara: Mode edit matriks, Tab Pengeluaran, Tombol Logout)
     └── InfoView.vue            (Petunjuk pembayaran transfer, nomor rekening & QRIS)
 ```
 
@@ -213,12 +222,173 @@ export function useKasMatrix(semesterIdRef) {
 
 ---
 
-## 7. Rangkuman Pengalaman Pengguna (UX Checklist)
+## 7. Spesifikasi Autentikasi Bendahara & Pintu Rahasia Footer (Opsi B)
+
+### A. Composable Autentikasi (`src/composables/useAuth.js`)
+Mengelola state token di `localStorage` dan status reaktif:
+
+```javascript
+import { ref, computed } from "vue";
+import api from "@/services/api";
+
+const TOKEN_KEY = "kaskita_bendahara_token";
+const token = ref(localStorage.getItem(TOKEN_KEY) || null);
+const isAuthModalOpen = ref(false);
+
+export function useAuth() {
+  const isAuthenticated = computed(() => !!token.value);
+
+  async function login(pin) {
+    const res = await api.post("/auth/login", { pin });
+    if (res.data?.success && res.data?.token) {
+      token.value = res.data.token;
+      localStorage.setItem(TOKEN_KEY, res.data.token);
+      isAuthModalOpen.value = false;
+      return true;
+    }
+    return false;
+  }
+
+  function logout() {
+    token.value = null;
+    localStorage.removeItem(TOKEN_KEY);
+    // Jika sedang di halaman /admin, redirect ke /
+    if (window.location.pathname.startsWith("/admin")) {
+      window.location.href = "/";
+    }
+  }
+
+  function openLoginModal() {
+    isAuthModalOpen.value = true;
+  }
+
+  function closeLoginModal() {
+    isAuthModalOpen.value = false;
+  }
+
+  return {
+    token,
+    isAuthenticated,
+    isAuthModalOpen,
+    login,
+    logout,
+    openLoginModal,
+    closeLoginModal,
+  };
+}
+```
+
+---
+
+### B. Injeksi Token Otomatis pada Axios (`src/api/axios.js` atau `api.js`)
+Setiap request ke backend secara otomatis mengikutsertakan header autentikasi tanpa mengharuskan komponen mengoper PIN manual:
+
+```javascript
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("kaskita_bendahara_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+    config.headers["x-admin-pin"] = token; // Dukungan ganda untuk kompatibilitas
+  }
+  return config;
+});
+```
+
+---
+
+### C. Komponen Pintu Rahasia Footer (`src/components/Footer.vue`)
+Diletakkan di bagian paling bawah layout aplikasi (`App.vue`):
+
+* **Tampilan untuk Mahasiswa / Publik (Belum Login)**:
+  - Berisi teks copyright kelas: `"© 2026 KasKita • Transparansi Kas Kelas"`.
+  - Di sampingnya terdapat teks/link samar:
+    ```html
+    <button 
+      @click="openLoginModal" 
+      class="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1 opacity-60 hover:opacity-100"
+      title="Akses Pengurus Kelas"
+    >
+      <Lock class="w-3.5 h-3.5" />
+      <span>Akses Bendahara</span>
+    </button>
+    ```
+* **Tampilan saat Bendahara Aktif (Sudah Login)**:
+  - Menampilkan status aktif dengan badge hijau halus:
+    ```html
+    <div class="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span>Bendahara Aktif</span>
+      <button @click="logout" class="ml-1 text-emerald-800 hover:underline font-semibold">Keluar</button>
+    </div>
+    ```
+
+---
+
+### D. Komponen Modal Input PIN (`src/components/AuthModal.vue`)
+* Muncul saat link rahasia di footer diklik.
+* **Fitur**:
+  - Input password/PIN numerik dengan tombol lihat/sembunyikan PIN (*eye icon*).
+  - Validasi error langsung dengan pesan ramah jika PIN keliru.
+  - Saat menekan tombol Enter, form langsung melakukan submit.
+  - Begitu berhasil, modal otomatis tertutup dan toast notifikasi sukses muncul: *"Selamat datang, Bendahara Kelas!"*.
+  - Tombol `[Ruang Bendahara]` di Navbar seketika muncul.
+
+---
+
+### E. Dinamika Tautan Navbar (`src/components/Navbar.vue`)
+Menu `links` difilter berdasarkan status autentikasi:
+
+```javascript
+const { isAuthenticated } = useAuth();
+
+const links = computed(() => {
+  const baseLinks = [
+    { to: '/', label: 'Ringkasan', icon: LayoutDashboard },
+    { to: '/info', label: 'Cara Bayar', icon: Info },
+  ];
+
+  // Hanya munculkan Ruang Bendahara jika bendahara sudah login
+  if (isAuthenticated.value) {
+    baseLinks.push({ to: '/admin', label: 'Ruang Bendahara', icon: ShieldCheck });
+  }
+
+  return baseLinks;
+});
+```
+
+---
+
+### F. Proteksi Route Guard (`src/router/index.js`)
+Mencegah pengguna umum mengakses `/admin` secara langsung:
+
+```javascript
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem("kaskita_bendahara_token");
+  if (to.path.startsWith("/admin") && !token) {
+    // Alihkan ke beranda publik jika belum login
+    next({ path: "/" });
+  } else {
+    next();
+  }
+});
+```
+
+---
+
+### G. Penyederhanaan Ruang Bendahara (`AdminView.vue`)
+* Menghilangkan field input PIN manual di atas tabel matriks yang sebelumnya wajib diisi berulang kali.
+* Menambahkan tombol **`[🚪 Keluar / Logout]`** di header Ruang Bendahara.
+* Semua aksi (centang pertemuan, edit kas, tambah pengeluaran/refund) langsung berjalan mulus menggunakan token yang tersimpan di `localStorage`.
+
+---
+
+## 8. Rangkuman Pengalaman Pengguna (UX Checklist)
 
 | Fitur / Alur | Pengguna Publik / Mahasiswa | Bendahara (Ruang Bendahara) |
 |---|---|---|
-| **Melihat Absensi Mingguan** | Tersedia melalui toggle `[📊 Tampilan Matriks Mingguan]` | Tersedia melalui toggle `[📊 Tampilan Matriks Mingguan]` |
-| **Mengedit Centang Mingguan** | Terkunci (Read-Only) | Klik langsung pada sel pertemuan (PIN auth) |
-| **Melihat Dana Non-Iuran** | Terlihat jelas di mini-tabel di bawah absensi | Terlihat di mini-tabel + Tab Manajemen Non-Kas |
-| **Melihat Sisa Kas Dikembalikan** | Terlihat transparan di Kartu Pengeluaran & Riwayat | Terlihat di Kartu, Riwayat & Tab Pengeluaran |
-| **Semester 3 ke Atas** | Otomatis tampilan ringkas tanpa kolom mingguan | Input iuran langsung nominal/status |
+| **Tombol di Navbar** | Hanya `Ringkasan`, `Cara Bayar`, `Riwayat` | Muncul tombol `[Ruang Bendahara]` |
+| **Akses Login** | Pintu masuk tersembunyi (hanya link kecil di footer) | Klik `Akses Bendahara` di footer $\rightarrow$ Masukkan PIN |
+| **Penyimpanan Login** | Tidak memiliki sesi login | Token tersimpan di `localStorage` (tidak perlu login ulang) |
+| **Eksekusi Aksi Admin** | Terkunci sepenuhnya | Langsung klik simpan/centang tanpa mengetik PIN ulang |
+| **Melihat Absensi Mingguan** | Tersedia melalui toggle `[📊 Tampilan Matriks Mingguan]` (Read-Only) | Tampilan Matriks interaktif (Klik sel untuk update) |
+| **Selesai Bertugas** | - | Klik `[Keluar / Logout]` $\rightarrow$ tombol di Navbar lenyap kembali |

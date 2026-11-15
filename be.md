@@ -36,9 +36,10 @@ src/
 │   ├── Pengeluaran.js           (Belanja kelas & Pengembalian Kas / Refund)
 │   └── PaymentHistory.js        (Audit trail mutasi kas & log perubahan status)
 ├── middlewares/
-│   ├── authPin.js               (Verifikasi header x-admin-pin untuk akses bendahara)
+│   ├── authPin.js               (Verifikasi header x-admin-pin & Authorization Bearer token)
 │   └── upload.js                (Multer memory storage untuk upload file Excel/CSV)
 ├── controllers/
+│   ├── authController.js        (BARU: Login bendahara & verifikasi token sesi)
 │   ├── semesterController.js    (CRUD semester & aktivasi semester aktif)
 │   ├── kasController.js         (CRUD kas, summary saldo, matriks mingguan & update pertemuan)
 │   ├── pemasukanLainController.js (CRUD dana non-iuran)
@@ -46,6 +47,7 @@ src/
 │   ├── historyController.js     (Timeline log mutasi & audit trail)
 │   └── excelController.js       (Export Excel multi-sheet & batch import)
 └── routes/
+    ├── authRoutes.js            (/api/auth: login & verify)
     ├── semesterRoutes.js        (/api/semesters)
     ├── kasRoutes.js             (/api/kas)
     ├── pemasukanLainRoutes.js   (/api/pemasukan-lain)
@@ -58,7 +60,58 @@ src/
 
 ## 2. Kontrak Endpoint REST API
 
-### A. Modul Semester (`/api/semesters`)
+### A. Modul Autentikasi Bendahara (`/api/auth`)
+
+| Method | Endpoint | Akses | Deskripsi |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | Publik | Validasi PIN bendahara & penerbitan token sesi |
+| `GET` | `/api/auth/verify` | Publik (dengan Token) | Verifikasi keabsahan token yang tersimpan di `localStorage` |
+
+#### 1. Endpoint: `POST /api/auth/login`
+* **Request Body**:
+  ```json
+  {
+    "pin": "123456"
+  }
+  ```
+* **Logika Backend**:
+  1. Validasi input: `pin` harus berupa string tidak kosong.
+  2. Periksa kecocokan PIN menggunakan `timingSafeEqual` terhadap `process.env.ADMIN_PIN`.
+  3. Jika PIN salah: kembalikan HTTP 401:
+     ```json
+     {
+       "success": false,
+       "message": "PIN bendahara salah"
+     }
+     ```
+  4. Jika PIN benar:
+     - Terbitkan token autentikasi sesi (token terenkripsi / hash berbasis secret & timestamp).
+     - Kembalikan HTTP 200:
+     ```json
+     {
+       "success": true,
+       "message": "Login bendahara berhasil",
+       "token": "kaskita_auth_session_hash_token...",
+       "role": "bendahara",
+       "expiresAt": "2026-12-16T00:00:00.000Z"
+     }
+     ```
+
+#### 2. Endpoint: `GET /api/auth/verify`
+* **Header**: `Authorization: Bearer <token>` atau `x-admin-pin: <PIN>`
+* **Fungsi**: Dipanggil frontend saat inisialisasi aplikasi untuk memvalidasi apakah token di `localStorage` masih sah atau sudah kedaluwarsa/tidak cocok.
+* **Response**:
+  ```json
+  {
+    "success": true,
+    "valid": true,
+    "role": "bendahara"
+  }
+  ```
+
+---
+
+### B. Modul Semester (`/api/semesters`)
 
 | Method | Endpoint | Akses | Deskripsi |
 |---|---|---|---|
