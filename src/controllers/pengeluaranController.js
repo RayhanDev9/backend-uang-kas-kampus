@@ -6,6 +6,7 @@ const PemasukanLain = require("../models/PemasukanLain");
 const PaymentHistory = require("../models/PaymentHistory");
 
 const VALID_KATEGORI = [
+  "Pengembalian Kas",
   "Akademik & Materi",
   "Perlengkapan Kelas",
   "Acara & Konsumsi",

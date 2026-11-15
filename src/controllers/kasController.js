@@ -185,6 +185,24 @@ async function getKas(req, res, next) {
             $group: {
               _id: null,
               totalPengeluaran: { $sum: "$nominal" },
+              totalPengeluaranOperasional: {
+                $sum: {
+                  $cond: [
+                    { $ne: ["$kategori", "Pengembalian Kas"] },
+                    "$nominal",
+                    0,
+                  ],
+                },
+              },
+              totalUangDikembalikan: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$kategori", "Pengembalian Kas"] },
+                    "$nominal",
+                    0,
+                  ],
+                },
+              },
             },
           },
         ]),
@@ -200,6 +218,10 @@ async function getKas(req, res, next) {
       pemasukanLainResult[0]?.totalPemasukanLain || 0;
     const totalPengeluaran =
       pengeluaranResult[0]?.totalPengeluaran || 0;
+    const totalPengeluaranOperasional =
+      pengeluaranResult[0]?.totalPengeluaranOperasional || 0;
+    const totalUangDikembalikan =
+      pengeluaranResult[0]?.totalUangDikembalikan || 0;
     const totalKasMasuk = kasSummary.totalKas || 0;
     const totalPemasukan = totalKasMasuk + totalPemasukanLain;
     const saldoBersih = totalPemasukan - totalPengeluaran;
@@ -214,6 +236,8 @@ async function getKas(req, res, next) {
       totalPemasukanLain,
       totalPemasukan,
       totalPengeluaran,
+      totalPengeluaranOperasional,
+      totalUangDikembalikan,
       saldoBersih,
       totalSaldo,
       totalLunas: kasSummary.totalLunas,

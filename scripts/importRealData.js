@@ -62,6 +62,7 @@ const pengeluaranSem1 = [
   { tanggal: "2025-12-13", judul: "Beli Spidol", kategori: "Perlengkapan Kelas", nominal: 20000, pic: "Bendahara" },
   { tanggal: "2025-12-20", judul: "Survei", kategori: "Lainnya", nominal: 100000, pic: "Ketua Kelas" },
   { tanggal: "2025-12-29", judul: "Sumbangan untuk ortu rio", kategori: "Sosial & Santunan", nominal: 500000, pic: "Sie Sosial" },
+  { tanggal: "2025-12-29", judul: "Pengembalian Sisa Kas ke Mahasiswa (Refund)", kategori: "Pengembalian Kas", nominal: 1319000, pic: "Bendahara (Syalwa & Wiji)" },
 ];
 
 // ==========================================
@@ -125,6 +126,7 @@ const pengeluaranSem2 = [
   { tanggal: "2026-06-20", judul: "Beli air sama spidol", kategori: "Perlengkapan Kelas", nominal: 44000, pic: "Bendahara" },
   { tanggal: "2026-06-23", judul: "sumbangan untuk rasya", kategori: "Sosial & Santunan", nominal: 300000, pic: "Sie Sosial" },
   { tanggal: "2026-06-27", judul: "beli air", kategori: "Acara & Konsumsi", nominal: 20000, pic: "Bendahara" },
+  { tanggal: "2026-06-27", judul: "Pengembalian Sisa Kas ke Mahasiswa (Refund)", kategori: "Pengembalian Kas", nominal: 470000, pic: "Bendahara Kelas" },
 ];
 
 // ==========================================

@@ -18,6 +18,7 @@ const pengeluaranSchema = new mongoose.Schema(
       required: [true, "Kategori pengeluaran wajib diisi"],
       enum: {
         values: [
+          "Pengembalian Kas",
           "Akademik & Materi",
           "Perlengkapan Kelas",
           "Acara & Konsumsi",
