@@ -297,7 +297,55 @@ Memastikan uang kas di luar iuran mingguan tidak mengotori tabel matriks absensi
 
 ---
 
-### E. Modul Export & Import File Excel (`/api/excel`)
+### E. Modul Audit History & Mutasi Lengkap (`/api/history`)
+
+| Method | Endpoint | Akses | Deskripsi |
+|---|---|---|---|
+| `GET` | `/api/history` | Publik | Ambil riwayat audit mutasi lengkap dengan filter & summary |
+
+#### Query Parameters:
+* `semesterId`: ID semester (opsional, default semester aktif).
+* `kategori`: Filter jenis mutasi (`all`, `pemasukan`, `pengeluaran`, `refund`, `status`).
+* `search`: Teks pencarian (NIM, Nama mahasiswa, keterangan belanja, PIC).
+* `bulan`: Filter bulan (format: `YYYY-MM`, contoh: `2026-03`).
+* `limit`: Jumlah data per request (default `100`, maksimal `500`).
+* `page`: Halaman data untuk paginasi (default `1`).
+
+#### Format Respons Terkonsolidasi:
+```json
+{
+  "success": true,
+  "summary": {
+    "totalMutasi": 51,
+    "totalKasMasuk": 1825000,
+    "totalPengeluaranOperasional": 1265000,
+    "totalUangDikembalikan": 470000
+  },
+  "daftarBulan": [
+    { "key": "2026-06", "label": "Juni 2026" },
+    { "key": "2026-05", "label": "Mei 2026" },
+    { "key": "2026-04", "label": "April 2026" },
+    { "key": "2026-03", "label": "Maret 2026" }
+  ],
+  "totalData": 51,
+  "data": [
+    {
+      "_id": "6734123...",
+      "aksi": "EXPENSE_CREATE",
+      "nim": "-",
+      "nama": "Pengembalian Sisa Kas ke Mahasiswa (Refund)",
+      "nominal": 470000,
+      "kategori": "Pengembalian Kas",
+      "keterangan": "Pembagian sisa kas kepada 25 mahasiswa",
+      "waktu": "2026-06-27T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### F. Modul Export & Import File Excel (`/api/excel`)
 
 * **Endpoint**: `GET /api/excel/export?semesterId=...`
 * Menghasilkan file `.xlsx` dengan format multi-sheet komprehensif:

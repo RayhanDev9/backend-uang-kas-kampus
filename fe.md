@@ -41,19 +41,20 @@ src/
 │   ├── usePengeluaran.js       (Query & mutasi belanja kas & pengembalian kas / refund)
 │   └── useHistory.js           (Query timeline audit mutasi)
 ├── components/
-│   ├── Navbar.vue              (Filter dinamis tombol Ruang Bendahara berdasarkan useAuth)
-│   ├── Footer.vue              (BARU: Footer dengan link rahasia "🔒 Akses Bendahara")
-│   ├── AuthModal.vue           (BARU: Modal input PIN login bendahara)
+│   ├── Navbar.vue              (Menu tautan langsung ke /riwayat)
+│   ├── Footer.vue              (Footer dengan link rahasia "🔒 Akses Bendahara")
+│   ├── AuthModal.vue           (Modal input PIN login bendahara)
+│   ├── TransactionDetailModal.vue (BARU: Modal rincian nota & jejak audit transaksi)
 │   ├── SemesterSwitcher.vue    (Dropdown pemilih semester aktif/arsip)
 │   ├── StatCards.vue           (3 Kartu: Saldo Bersih Riil, Total Pemasukan, Total Pengeluaran & Refund)
 │   ├── KasTable.vue            (Tabel ringkas: No, NIM, Nama, Nominal, Status)
 │   ├── KasMatrixTable.vue      (Tabel matriks mingguan bergaya Excel dengan frozen columns)
 │   ├── PemasukanLainTable.vue  (Mini-tabel terpisah untuk dana non-iuran)
 │   ├── KasFormModal.vue        (Modal tambah/edit data mahasiswa)
-│   ├── HistoryDrawer.vue       (Laci timeline audit mutasi masuk, belanja & refund)
 │   └── KasImportModal.vue      (Modal upload file Excel/CSV)
 └── views/
     ├── DashboardView.vue       (Dasbor publik: StatCards, Toggle Tampilan, KasTable / KasMatrixTable)
+    ├── HistoryView.vue         (BARU: Halaman penuh riwayat mutasi kas ala rekening koran)
     ├── AdminView.vue           (Ruang Bendahara: Mode edit matriks, Tab Pengeluaran, Tombol Logout)
     └── InfoView.vue            (Petunjuk pembayaran transfer, nomor rekening & QRIS)
 ```
@@ -382,13 +383,72 @@ router.beforeEach((to, from, next) => {
 
 ---
 
-## 8. Rangkuman Pengalaman Pengguna (UX Checklist)
+## 8. Spesifikasi Halaman Penuh Riwayat Mutasi (`HistoryView.vue` - `/riwayat`)
+
+Menjadikan riwayat sebagai halaman penuh independen dengan tata letak lapang bergaya buku kas / rekening koran modern.
+
+### A. 4 Kartu Metrik Ringkasan (*Top Summary Bar*):
+1. **Total Mutasi**: Jumlah log transaksi tercatat pada semester aktif.
+2. **Akumulasi Uang Masuk**: Total kas masuk (`+ Rp 1.825.000` warna hijau zamrud).
+3. **Akumulasi Uang Keluar**: Total belanja peralatan/operasional kelas (`- Rp 1.265.000` warna merah rose).
+4. **Total Uang Dikembalikan**: Uang sisa kas yang dibagikan kembali (`↺ Rp 470.000` warna biru teal).
+
+---
+
+### B. Segmented Filter Kategori (*Quick Pills*):
+Tersedia 5 tab pemilih cepat di bagian atas:
+* **`[🌟 Semua Mutasi]`**: Menampilkan seluruh riwayat lengkap secara kronologis.
+* **`[🟢 Uang Masuk / Iuran]`**: Menyaring pembayaran iuran kas dan dana non-iuran.
+* **`[🔴 Belanja Operasional]`**: Menyaring pengeluaran perlengkapan, spidol, konsumsi, dan materi kelas.
+* **`[🔵 Pengembalian Kas]`**: Menyaring khusus pembagian uang refund sisa kas ke mahasiswa.
+* **`[⚙️ Log Perubahan Status]`**: Menyaring riwayat saat bendahara mengubah absensi mingguan.
+
+---
+
+### C. Toolbar Pencarian, Filter Bulan & Tombol Cetak:
+* **Input Search Real-Time**: Pencarian berdasarkan nama mahasiswa, masked NIM (`251******01`), nama barang belanjaan, atau PIC bendahara.
+* **Filter Dropdown Bulan**: Memilih rentang bulan spesifik (contoh: *"Maret 2026"*, *"April 2026"*, *"Semua Bulan"*).
+* **Tombol Cetak / Simpan PDF**: Memicu `window.print()` dengan CSS `@media print` khusus agar menghasilkan cetakan dokumen buku kas rapi tanpa elemen navigasi website.
+
+---
+
+### D. Tampilan Mutasi dengan Header Tanggal (*Sticky Date Grouping*):
+Transaksi dikelompokkan secara rapi per hari/tanggal kalender:
+* **Format Header Tanggal**: `📅 Sabtu, 27 Juni 2026 • 3 Transaksi`
+* **Format Baris 3 Bagian (Three-Column Clean Row)**:
+  1. **Sisi Kiri**:
+     - Ikon transaksi (hijau koin untuk iuran, merah panah keluar untuk belanja, teal putar balik untuk refund).
+     - Nama mahasiswa atau judul keperluan belanja.
+     - Masked NIM (`251******01`) atau nama penanggung jawab (PIC).
+  2. **Sisi Tengah**:
+     - Keterangan mutasi (contoh: *"Iuran Pertemuan 1 s/d 14"*, *"Beli Spidol & Tinta"*).
+     - Badge kategori berwarna lembut.
+  3. **Sisi Kanan**:
+     - **Nominal Arus Kas Tebal**:
+       - Masuk: `+ Rp 70.000` (Hijau tebal).
+       - Keluar Belanja: `- Rp 20.000` (Merah tebal).
+       - Refund: `↺ Rp 19.000` (Teal tebal).
+     - Waktu transaksi / jam pencatatan.
+
+---
+
+### E. Modal Dialog Rincian Transaksi (`TransactionDetailModal.vue`):
+* Mengklik salah satu baris mutasi akan membuka modal detail berformat struk/nota digital:
+  - ID Log Transaksi & Waktu presisi.
+  - Nama Mahasiswa / PIC Penanggung Jawab.
+  - Snapshot status sebelum $\rightarrow$ sesudah perubahan.
+  - Catatan lengkap bendahara.
+
+---
+
+## 9. Rangkuman Pengalaman Pengguna (UX Checklist)
 
 | Fitur / Alur | Pengguna Publik / Mahasiswa | Bendahara (Ruang Bendahara) |
 |---|---|---|
-| **Tombol di Navbar** | Hanya `Ringkasan`, `Cara Bayar`, `Riwayat` | Muncul tombol `[Ruang Bendahara]` |
+| **Tombol di Navbar** | Hanya `Ringkasan`, `Cara Bayar`, `Riwayat Kas` | Muncul tambahan tombol `[Ruang Bendahara]` |
 | **Akses Login** | Pintu masuk tersembunyi (hanya link kecil di footer) | Klik `Akses Bendahara` di footer $\rightarrow$ Masukkan PIN |
 | **Penyimpanan Login** | Tidak memiliki sesi login | Token tersimpan di `localStorage` (tidak perlu login ulang) |
+| **Melihat Halaman Riwayat** | Halaman luas `/riwayat` dengan filter tab & date grouping | Halaman luas `/riwayat` dengan audit trail lengkap |
 | **Eksekusi Aksi Admin** | Terkunci sepenuhnya | Langsung klik simpan/centang tanpa mengetik PIN ulang |
 | **Melihat Absensi Mingguan** | Tersedia melalui toggle `[📊 Tampilan Matriks Mingguan]` (Read-Only) | Tampilan Matriks interaktif (Klik sel untuk update) |
 | **Selesai Bertugas** | - | Klik `[Keluar / Logout]` $\rightarrow$ tombol di Navbar lenyap kembali |
