@@ -51,3 +51,26 @@ test("rejects empty or unsupported update fields", () => {
     "Body request berisi field yang tidak didukung"
   );
 });
+
+test("validates refund and detailMingguan in kas input", () => {
+  assert.equal(
+    validateKasInput({
+      ...validKas,
+      refund: 19000,
+      detailMingguan: [
+        { pertemuanKe: 1, tanggal: "07/03", bayar: true, nominal: 5000 },
+      ],
+    }),
+    null
+  );
+
+  assert.equal(
+    validateKasInput({ ...validKas, refund: -5000 }),
+    "Field refund harus berupa angka nol atau lebih"
+  );
+
+  assert.equal(
+    validateKasInput({ ...validKas, detailMingguan: "bukan array" }),
+    "Field detailMingguan harus berupa array"
+  );
+});

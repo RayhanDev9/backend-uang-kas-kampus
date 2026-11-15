@@ -23,6 +23,29 @@ function validateSemesterInput(body) {
     return "Field targetKasPerMhs harus berupa angka nol atau lebih";
   }
 
+  if (
+    body.tipeIuran !== undefined &&
+    !["MINGGUAN", "SEKALI_BAYAR"].includes(body.tipeIuran)
+  ) {
+    return "Field tipeIuran harus MINGGUAN atau SEKALI_BAYAR";
+  }
+
+  if (
+    body.nominalPerMinggu !== undefined &&
+    (typeof body.nominalPerMinggu !== "number" ||
+      !Number.isFinite(body.nominalPerMinggu) ||
+      body.nominalPerMinggu < 0)
+  ) {
+    return "Field nominalPerMinggu harus berupa angka nol atau lebih";
+  }
+
+  if (
+    body.daftarPertemuan !== undefined &&
+    !Array.isArray(body.daftarPertemuan)
+  ) {
+    return "Field daftarPertemuan harus berupa array";
+  }
+
   if (body.tanggalMulai !== undefined && body.tanggalMulai !== null) {
     const d = new Date(body.tanggalMulai);
     if (Number.isNaN(d.getTime())) {
@@ -83,6 +106,9 @@ async function createSemester(req, res, next) {
       kode,
       isAktif = false,
       targetKasPerMhs = 0,
+      tipeIuran = "SEKALI_BAYAR",
+      nominalPerMinggu = 5000,
+      daftarPertemuan = [],
       tanggalMulai,
       tanggalSelesai,
     } = req.body;
@@ -104,6 +130,9 @@ async function createSemester(req, res, next) {
       kode: kode.trim(),
       isAktif: Boolean(isAktif),
       targetKasPerMhs,
+      tipeIuran,
+      nominalPerMinggu,
+      daftarPertemuan,
       tanggalMulai: tanggalMulai ? new Date(tanggalMulai) : undefined,
       tanggalSelesai: tanggalSelesai ? new Date(tanggalSelesai) : undefined,
     });

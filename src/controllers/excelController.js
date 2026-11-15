@@ -117,7 +117,145 @@ async function exportKas(req, res, next) {
       });
     };
 
-    // Sheet 1: Iuran Kas Mahasiswa
+    // Sheet 1 (Khusus Semester MINGGUAN): Matriks Absensi Mingguan
+    if (currentSemester && currentSemester.tipeIuran === "MINGGUAN") {
+      let daftarPertemuan =
+        Array.isArray(currentSemester.daftarPertemuan) &&
+        currentSemester.daftarPertemuan.length > 0
+          ? currentSemester.daftarPertemuan
+          : [];
+
+      if (daftarPertemuan.length === 0) {
+        const pertemuanMap = new Map();
+        kasList.forEach((s) => {
+          (s.detailMingguan || []).forEach((d) => {
+            if (!pertemuanMap.has(d.pertemuanKe)) {
+              pertemuanMap.set(d.pertemuanKe, {
+                pertemuanKe: d.pertemuanKe,
+                tanggal: d.tanggal || `P${d.pertemuanKe}`,
+                label: `Pertemuan ${d.pertemuanKe}`,
+              });
+            }
+          });
+        });
+        if (pertemuanMap.size > 0) {
+          daftarPertemuan = Array.from(pertemuanMap.values()).sort(
+            (a, b) => a.pertemuanKe - b.pertemuanKe
+          );
+        }
+      }
+
+      const wsMatrix = workbook.addWorksheet("Matriks Absensi Mingguan");
+
+      const matrixColumns = [
+        { header: "No", key: "no", width: 6 },
+        { header: "NIM", key: "nim", width: 18 },
+        { header: "Nama Mahasiswa", key: "nama", width: 30 },
+      ];
+
+      daftarPertemuan.forEach((p) => {
+        matrixColumns.push({
+          header: p.tanggal || `P${p.pertemuanKe}`,
+          key: `p_${p.pertemuanKe}`,
+          width: 10,
+        });
+      });
+
+      matrixColumns.push({
+        header: "Total Bayar",
+        key: "totalBayar",
+        width: 18,
+      });
+      matrixColumns.push({ header: "Target", key: "targetKas", width: 16 });
+      matrixColumns.push({ header: "Status", key: "status", width: 14 });
+
+      wsMatrix.columns = matrixColumns;
+      applyHeaderStyle(wsMatrix);
+
+      kasList.forEach((item, idx) => {
+        const detailMap = new Map();
+        (item.detailMingguan || []).forEach((d) => {
+          detailMap.set(d.pertemuanKe, d);
+        });
+
+        const rowData = {
+          no: idx + 1,
+          nim: String(item.nim),
+          nama: item.nama,
+          totalBayar: item.nominal,
+          targetKas: currentSemester.targetKasPerMhs || 0,
+          status: item.status,
+        };
+
+        daftarPertemuan.forEach((p) => {
+          const d = detailMap.get(p.pertemuanKe);
+          rowData[`p_${p.pertemuanKe}`] = d && d.bayar ? "✓" : "-";
+        });
+
+        const row = wsMatrix.addRow(rowData);
+        row.height = 20;
+
+        row.getCell("no").alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+        row.getCell("nim").alignment = {
+          vertical: "middle",
+          horizontal: "left",
+        };
+        row.getCell("nama").alignment = {
+          vertical: "middle",
+          horizontal: "left",
+        };
+
+        daftarPertemuan.forEach((p) => {
+          const cell = row.getCell(`p_${p.pertemuanKe}`);
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+          if (cell.value === "✓") {
+            cell.font = { bold: true, color: { argb: "FF059669" } };
+          } else {
+            cell.font = { color: { argb: "FF9CA3AF" } };
+          }
+        });
+
+        const totalCell = row.getCell("totalBayar");
+        totalCell.numFmt = '"Rp" #,##0';
+        totalCell.alignment = { vertical: "middle", horizontal: "right" };
+
+        const targetCell = row.getCell("targetKas");
+        targetCell.numFmt = '"Rp" #,##0';
+        targetCell.alignment = { vertical: "middle", horizontal: "right" };
+
+        const statusCell = row.getCell("status");
+        statusCell.alignment = { vertical: "middle", horizontal: "center" };
+        if (item.status === "Lunas") {
+          statusCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFD1FAE5" },
+          };
+          statusCell.font = { color: { argb: "FF065F46" }, bold: true };
+        } else {
+          statusCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFEF3C7" },
+          };
+          statusCell.font = { color: { argb: "FF92400E" }, bold: true };
+        }
+
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: "thin", color: { argb: "FFE5E7EB" } },
+            left: { style: "thin", color: { argb: "FFE5E7EB" } },
+            bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+            right: { style: "thin", color: { argb: "FFE5E7EB" } },
+          };
+        });
+      });
+    }
+
+    // Sheet: Iuran Kas Mahasiswa
     const wsKas = workbook.addWorksheet("Iuran Kas Mahasiswa");
     wsKas.columns = [
       { header: "No", key: "no", width: 8 },

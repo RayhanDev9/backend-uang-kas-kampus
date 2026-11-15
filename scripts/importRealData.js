@@ -209,10 +209,43 @@ async function runImport() {
 
   // 1. Buat 3 Master Semester sesuai penamaan file .md
   console.log("\n1. Membuat 3 Master Semester...");
+  const daftarPertemuanSem1 = [
+    { pertemuanKe: 1, tanggal: "11/10", label: "Pertemuan 1" },
+    { pertemuanKe: 2, tanggal: "18/10", label: "Pertemuan 2" },
+    { pertemuanKe: 3, tanggal: "25/10", label: "Pertemuan 3" },
+    { pertemuanKe: 4, tanggal: "01/11", label: "Pertemuan 4" },
+    { pertemuanKe: 5, tanggal: "08/11", label: "Pertemuan 5" },
+    { pertemuanKe: 6, tanggal: "15/11", label: "Pertemuan 6" },
+    { pertemuanKe: 7, tanggal: "22/11", label: "Pertemuan 7" },
+    { pertemuanKe: 8, tanggal: "29/11", label: "Pertemuan 8" },
+    { pertemuanKe: 9, tanggal: "06/12", label: "Pertemuan 9" },
+    { pertemuanKe: 10, tanggal: "13/12", label: "Pertemuan 10" },
+  ];
+
+  const daftarPertemuanSem2 = [
+    { pertemuanKe: 1, tanggal: "07/03", label: "Pertemuan 1" },
+    { pertemuanKe: 2, tanggal: "14/03", label: "Pertemuan 2" },
+    { pertemuanKe: 3, tanggal: "21/03", label: "Pertemuan 3" },
+    { pertemuanKe: 4, tanggal: "28/03", label: "Pertemuan 4" },
+    { pertemuanKe: 5, tanggal: "04/04", label: "Pertemuan 5" },
+    { pertemuanKe: 6, tanggal: "11/04", label: "Pertemuan 6" },
+    { pertemuanKe: 7, tanggal: "18/04", label: "Pertemuan 7" },
+    { pertemuanKe: 8, tanggal: "25/04", label: "Pertemuan 8" },
+    { pertemuanKe: 9, tanggal: "02/05", label: "Pertemuan 9" },
+    { pertemuanKe: 10, tanggal: "09/05", label: "Pertemuan 10" },
+    { pertemuanKe: 11, tanggal: "16/05", label: "Pertemuan 11" },
+    { pertemuanKe: 12, tanggal: "23/05", label: "Pertemuan 12" },
+    { pertemuanKe: 13, tanggal: "30/05", label: "Pertemuan 13" },
+    { pertemuanKe: 14, tanggal: "06/06", label: "Pertemuan 14" },
+  ];
+
   const sem1 = await Semester.create({
     nama: "Semester Ganjil 2025/2026",
     kode: "2025-GANJIL",
     isAktif: false,
+    tipeIuran: "MINGGUAN",
+    nominalPerMinggu: 5000,
+    daftarPertemuan: daftarPertemuanSem1,
     targetKasPerMhs: 50000,
     tanggalMulai: new Date("2025-09-20"),
     tanggalSelesai: new Date("2025-12-29"),
@@ -222,6 +255,9 @@ async function runImport() {
     nama: "Semester Genap 2025/2026",
     kode: "2025-GENAP",
     isAktif: false,
+    tipeIuran: "MINGGUAN",
+    nominalPerMinggu: 5000,
+    daftarPertemuan: daftarPertemuanSem2,
     targetKasPerMhs: 70000,
     tanggalMulai: new Date("2026-03-07"),
     tanggalSelesai: new Date("2026-06-27"),
@@ -231,6 +267,9 @@ async function runImport() {
     nama: "Semester Ganjil 2026/2027",
     kode: "2026-GANJIL",
     isAktif: true,
+    tipeIuran: "SEKALI_BAYAR",
+    nominalPerMinggu: 0,
+    daftarPertemuan: [],
     targetKasPerMhs: 20000,
     tanggalMulai: new Date("2026-07-07"),
     tanggalSelesai: new Date("2026-11-14"),
@@ -241,6 +280,14 @@ async function runImport() {
   console.log("\n2. Mengisi data Semester Ganjil 2025/2026 (01TPLE009)...");
   const kasSem1 = rawMhsSem1.map((m) => {
     const isLunas = m.bayar >= 50000;
+    const paidWeeks = Math.min(10, Math.floor(m.bayar / 5000));
+    const detailMingguan = daftarPertemuanSem1.map((p) => ({
+      pertemuanKe: p.pertemuanKe,
+      tanggal: p.tanggal,
+      bayar: p.pertemuanKe <= paidWeeks,
+      nominal: 5000,
+    }));
+
     return {
       semesterId: sem1._id,
       nim: generateMaskedNim(m.no),
@@ -249,6 +296,8 @@ async function runImport() {
       nominal: m.bayar,
       status: isLunas ? "Lunas" : "Belum Lunas",
       metodePembayaran: "Tunai",
+      refund: m.refund || 0,
+      detailMingguan,
       tanggalBayar: new Date("2025-11-15"),
     };
   });
@@ -293,6 +342,14 @@ async function runImport() {
   console.log("\n3. Mengisi data Semester Genap 2025/2026 (02TPLE009)...");
   const kasSem2 = rawMhsSem2.map((m) => {
     const isLunas = m.bayar >= 70000;
+    const paidWeeks = Math.min(14, Math.floor(m.bayar / 5000));
+    const detailMingguan = daftarPertemuanSem2.map((p) => ({
+      pertemuanKe: p.pertemuanKe,
+      tanggal: p.tanggal,
+      bayar: p.pertemuanKe <= paidWeeks,
+      nominal: 5000,
+    }));
+
     return {
       semesterId: sem2._id,
       nim: generateMaskedNim(m.no),
@@ -301,6 +358,8 @@ async function runImport() {
       nominal: m.bayar,
       status: isLunas ? "Lunas" : "Belum Lunas",
       metodePembayaran: "Tunai",
+      refund: m.refund || 0,
+      detailMingguan,
       tanggalBayar: new Date("2026-04-18"),
     };
   });

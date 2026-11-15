@@ -14,6 +14,8 @@ const allowedFields = new Set([
   "tanggalBayar",
   "semesterId",
   "metodePembayaran",
+  "refund",
+  "detailMingguan",
 ]);
 const requiredFields = ["nim", "nama", "periode", "nominal", "status"];
 const validStatuses = new Set(["Lunas", "Belum Lunas"]);
@@ -84,6 +86,22 @@ function validateKasInput(body, { partial = false } = {}) {
     ) {
       return "Field tanggalBayar harus berupa tanggal yang valid";
     }
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(body, "refund") &&
+    (typeof body.refund !== "number" ||
+      !Number.isFinite(body.refund) ||
+      body.refund < 0)
+  ) {
+    return "Field refund harus berupa angka nol atau lebih";
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(body, "detailMingguan") &&
+    !Array.isArray(body.detailMingguan)
+  ) {
+    return "Field detailMingguan harus berupa array";
   }
 
   return null;
@@ -456,10 +474,285 @@ async function deleteKas(req, res, next) {
   }
 }
 
+async function getKasMatrix(req, res, next) {
+  try {
+    let currentSemester = null;
+
+    if (req.query.semesterId) {
+      if (!mongoose.isValidObjectId(req.query.semesterId)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID semester tidak valid",
+        });
+      }
+      currentSemester = await Semester.findById(req.query.semesterId).lean();
+    } else {
+      currentSemester = await Semester.findOne({ isAktif: true }).lean();
+    }
+
+    if (!currentSemester) {
+      return res.status(404).json({
+        success: false,
+        message: "Semester tidak ditemukan",
+      });
+    }
+
+    const tipeIuran = currentSemester.tipeIuran || "SEKALI_BAYAR";
+    let daftarPertemuan = Array.isArray(currentSemester.daftarPertemuan) && currentSemester.daftarPertemuan.length > 0
+      ? currentSemester.daftarPertemuan
+      : [];
+
+    const students = await Kas.find({ semesterId: currentSemester._id })
+      .sort({ nim: 1, nama: 1, _id: 1 })
+      .lean();
+
+    // Jika semester bertipe MINGGUAN namun daftarPertemuan di semester belum diset,
+    // sintesiskan dari data detailMingguan mahasiswa jika ada.
+    if (daftarPertemuan.length === 0 && tipeIuran === "MINGGUAN") {
+      const pertemuanMap = new Map();
+      students.forEach((s) => {
+        (s.detailMingguan || []).forEach((d) => {
+          if (!pertemuanMap.has(d.pertemuanKe)) {
+            pertemuanMap.set(d.pertemuanKe, {
+              pertemuanKe: d.pertemuanKe,
+              tanggal: d.tanggal || `P${d.pertemuanKe}`,
+              label: `Pertemuan ${d.pertemuanKe}`,
+            });
+          }
+        });
+      });
+
+      if (pertemuanMap.size > 0) {
+        daftarPertemuan = Array.from(pertemuanMap.values()).sort(
+          (a, b) => a.pertemuanKe - b.pertemuanKe
+        );
+      }
+    }
+
+    const targetKasPerMhs = currentSemester.targetKasPerMhs || 0;
+    const nominalPerMinggu = currentSemester.nominalPerMinggu || 5000;
+
+    const rows = students.map((mhs, idx) => {
+      const detailMap = new Map();
+      (mhs.detailMingguan || []).forEach((d) => {
+        detailMap.set(d.pertemuanKe, d);
+      });
+
+      const fullDetailMingguan = daftarPertemuan.map((p) => {
+        const item = detailMap.get(p.pertemuanKe);
+        return {
+          pertemuanKe: p.pertemuanKe,
+          tanggal: p.tanggal,
+          bayar: item ? Boolean(item.bayar) : false,
+          nominal:
+            item && typeof item.nominal === "number"
+              ? item.nominal
+              : nominalPerMinggu,
+        };
+      });
+
+      const totalPertemuanBayar = fullDetailMingguan.filter((d) => d.bayar).length;
+
+      return {
+        _id: mhs._id,
+        no: idx + 1,
+        nim: mhs.nim,
+        nama: mhs.nama,
+        nominal: mhs.nominal,
+        targetKas: targetKasPerMhs,
+        status: mhs.status,
+        totalPertemuanBayar,
+        detailMingguan: fullDetailMingguan,
+      };
+    });
+
+    const totalPerMinggu = daftarPertemuan.map((p) => {
+      let jumlahBayar = 0;
+      let totalUang = 0;
+      rows.forEach((r) => {
+        const d = r.detailMingguan.find((item) => item.pertemuanKe === p.pertemuanKe);
+        if (d && d.bayar) {
+          jumlahBayar += 1;
+          totalUang += d.nominal || nominalPerMinggu;
+        }
+      });
+      return {
+        pertemuanKe: p.pertemuanKe,
+        tanggal: p.tanggal,
+        jumlahBayar,
+        totalUang,
+      };
+    });
+
+    const grandTotalKas = rows.reduce((acc, curr) => acc + (curr.nominal || 0), 0);
+
+    return res.json({
+      success: true,
+      semester: {
+        _id: currentSemester._id,
+        nama: currentSemester.nama,
+        kode: currentSemester.kode,
+        isAktif: currentSemester.isAktif,
+        tipeIuran,
+        targetKasPerMhs,
+        nominalPerMinggu,
+      },
+      daftarPertemuan,
+      rows,
+      totalPerMinggu,
+      grandTotalKas,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function updatePertemuan(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID kas tidak valid",
+      });
+    }
+
+    const { pertemuanKe, bayar, nominal } = req.body;
+
+    if (
+      pertemuanKe === undefined ||
+      typeof pertemuanKe !== "number" ||
+      !Number.isInteger(pertemuanKe) ||
+      pertemuanKe < 1
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Field pertemuanKe harus berupa bilangan bulat positif >= 1",
+      });
+    }
+
+    if (bayar === undefined || typeof bayar !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Field bayar harus berupa boolean (true atau false)",
+      });
+    }
+
+    if (
+      nominal !== undefined &&
+      (typeof nominal !== "number" || !Number.isFinite(nominal) || nominal < 0)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Field nominal harus berupa angka nol atau lebih",
+      });
+    }
+
+    const kas = await Kas.findById(req.params.id);
+    if (!kas) {
+      return res.status(404).json({
+        success: false,
+        message: "Data kas mahasiswa tidak ditemukan",
+      });
+    }
+
+    const semester = await Semester.findById(kas.semesterId);
+    const nominalDefault =
+      nominal !== undefined
+        ? nominal
+        : semester?.nominalPerMinggu || 5000;
+
+    let tanggalDefault = `P${pertemuanKe}`;
+    if (semester && Array.isArray(semester.daftarPertemuan)) {
+      const matchP = semester.daftarPertemuan.find(
+        (p) => p.pertemuanKe === pertemuanKe
+      );
+      if (matchP && matchP.tanggal) {
+        tanggalDefault = matchP.tanggal;
+      }
+    }
+
+    if (!Array.isArray(kas.detailMingguan)) {
+      kas.detailMingguan = [];
+    }
+
+    const existingIndex = kas.detailMingguan.findIndex(
+      (d) => d.pertemuanKe === pertemuanKe
+    );
+
+    if (existingIndex >= 0) {
+      kas.detailMingguan[existingIndex].bayar = bayar;
+      if (nominal !== undefined) {
+        kas.detailMingguan[existingIndex].nominal = nominal;
+      }
+    } else {
+      kas.detailMingguan.push({
+        pertemuanKe,
+        tanggal: tanggalDefault,
+        bayar,
+        nominal: nominalDefault,
+      });
+    }
+
+    kas.detailMingguan.sort((a, b) => a.pertemuanKe - b.pertemuanKe);
+
+    // Hitung ulang nominal kas dari total pertemuan yang telah dibayar
+    const totalBaru = kas.detailMingguan.reduce(
+      (sum, item) => sum + (item.bayar ? item.nominal : 0),
+      0
+    );
+    const nominalLama = kas.nominal;
+    kas.nominal = totalBaru;
+
+    // Evaluasi status lunas otomatis terhadap target semester
+    const target = semester?.targetKasPerMhs || 0;
+    const statusLama = kas.status;
+    if (target > 0) {
+      kas.status = totalBaru >= target ? "Lunas" : "Belum Lunas";
+    }
+
+    await kas.save();
+
+    // Catat riwayat audit di PaymentHistory
+    try {
+      await PaymentHistory.create({
+        aksi: "UPDATE_STATUS",
+        semesterId: kas.semesterId,
+        kasId: kas._id,
+        nim: kas.nim,
+        nama: kas.nama,
+        nominal: kas.nominal,
+        nominalLama,
+        nominalBaru: totalBaru,
+        statusLama,
+        statusBaru: kas.status,
+        keterangan: `Update absensi pertemuan ke-${pertemuanKe} (${
+          bayar ? "LUNAS / ✓" : "BATAL / -"
+        }) oleh Bendahara`,
+        waktu: new Date(),
+      });
+    } catch (historyError) {
+      console.error(
+        "Gagal mencatat history update pertemuan:",
+        historyError.message
+      );
+    }
+
+    return res.json({
+      success: true,
+      message: `Absensi pertemuan ${pertemuanKe} untuk ${kas.nama} berhasil diperbarui`,
+      data: kas,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   createKas,
   deleteKas,
   getKas,
+  getKasMatrix,
   updateKas,
+  updatePertemuan,
   validateKasInput,
 };

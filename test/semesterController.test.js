@@ -68,3 +68,37 @@ test("validates dates properly in semester", () => {
     "Field tanggalSelesai harus berupa tanggal yang valid"
   );
 });
+
+test("validates tipeIuran and daftarPertemuan in semester", () => {
+  assert.equal(
+    validateSemesterInput({
+      nama: "Semester 1",
+      kode: "2024-1",
+      tipeIuran: "INVALID_TIPE",
+    }),
+    "Field tipeIuran harus MINGGUAN atau SEKALI_BAYAR"
+  );
+
+  assert.equal(
+    validateSemesterInput({
+      nama: "Semester 1",
+      kode: "2024-1",
+      tipeIuran: "MINGGUAN",
+      daftarPertemuan: "bukan array",
+    }),
+    "Field daftarPertemuan harus berupa array"
+  );
+
+  assert.equal(
+    validateSemesterInput({
+      nama: "Semester 1",
+      kode: "2024-1",
+      tipeIuran: "MINGGUAN",
+      daftarPertemuan: [
+        { pertemuanKe: 1, tanggal: "07/03" },
+        { pertemuanKe: 2, tanggal: "14/03" },
+      ],
+    }),
+    null
+  );
+});

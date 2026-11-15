@@ -1,5 +1,15 @@
 const mongoose = require("mongoose");
 
+const detailMingguanSubSchema = new mongoose.Schema(
+  {
+    pertemuanKe: { type: Number, required: true },
+    tanggal: { type: String, required: true },
+    bayar: { type: Boolean, default: false },
+    nominal: { type: Number, default: 5000, min: 0 },
+  },
+  { _id: false }
+);
+
 const kasSchema = new mongoose.Schema(
   {
     semesterId: {
@@ -41,6 +51,12 @@ const kasSchema = new mongoose.Schema(
       enum: ["Transfer", "QRIS", "Tunai"],
       default: "Transfer",
     },
+    refund: {
+      type: Number,
+      default: 0,
+      min: [0, "Refund tidak boleh negatif"],
+    },
+    detailMingguan: [detailMingguanSubSchema],
     tanggalBayar: {
       type: Date,
       default: Date.now,
