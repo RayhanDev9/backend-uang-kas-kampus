@@ -1,4 +1,4 @@
-const { timingSafeEqual } = require("node:crypto");
+const { extractTokenOrPin, isValidTokenOrPin } = require("../controllers/authController");
 
 function authPin(req, res, next) {
   const configuredPin = process.env.ADMIN_PIN;
@@ -9,12 +9,8 @@ function authPin(req, res, next) {
     });
   }
 
-  const providedPin = req.get("x-admin-pin");
-  if (
-    typeof providedPin !== "string" ||
-    Buffer.byteLength(providedPin) !== Buffer.byteLength(configuredPin) ||
-    !timingSafeEqual(Buffer.from(providedPin), Buffer.from(configuredPin))
-  ) {
+  const provided = extractTokenOrPin(req);
+  if (!provided || !isValidTokenOrPin(provided, configuredPin)) {
     return res.status(401).json({
       success: false,
       message: "PIN admin tidak valid",

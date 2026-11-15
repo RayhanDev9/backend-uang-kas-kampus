@@ -3,6 +3,7 @@ require("dotenv").config();
 const cors = require("cors");
 const express = require("express");
 const connectDatabase = require("../src/config/db");
+const authRoutes = require("../src/routes/authRoutes");
 const semesterRoutes = require("../src/routes/semesterRoutes");
 const kasRoutes = require("../src/routes/kasRoutes");
 const pemasukanLainRoutes = require("../src/routes/pemasukanLainRoutes");
@@ -30,6 +31,7 @@ app.use(async (req, res, next) => {
 });
 
 // Mount Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/semesters", semesterRoutes);
 app.use("/api/pemasukan-lain", pemasukanLainRoutes);
 app.use("/api/pengeluaran", pengeluaranRoutes);
