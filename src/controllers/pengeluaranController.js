@@ -170,11 +170,11 @@ async function createPengeluaran(req, res, next) {
 
     const semesterIdObj = new mongoose.Types.ObjectId(semesterId);
 
-    // Hitung saldo kas saat ini untuk validasi defisit kas
+    // Hitung saldo kas saat ini untuk validasi defisit kas (semua kas mahasiswa yang sudah masuk)
     const [kasSummaryResult, pemasukanLainResult, pengeluaranResult] =
       await Promise.all([
         Kas.aggregate([
-          { $match: { semesterId: semesterIdObj, status: "Lunas" } },
+          { $match: { semesterId: semesterIdObj } },
           { $group: { _id: null, total: { $sum: "$nominal" } } },
         ]),
         PemasukanLain.aggregate([
@@ -187,10 +187,10 @@ async function createPengeluaran(req, res, next) {
         ]),
       ]);
 
-    const totalKasLunas = kasSummaryResult[0]?.total || 0;
+    const totalKasMasuk = kasSummaryResult[0]?.total || 0;
     const totalPemasukanLain = pemasukanLainResult[0]?.total || 0;
     const totalPengeluaranLama = pengeluaranResult[0]?.total || 0;
-    const totalPemasukan = totalKasLunas + totalPemasukanLain;
+    const totalPemasukan = totalKasMasuk + totalPemasukanLain;
     const sisaSaldo = totalPemasukan - totalPengeluaranLama;
 
     if (req.body.nominal > sisaSaldo) {

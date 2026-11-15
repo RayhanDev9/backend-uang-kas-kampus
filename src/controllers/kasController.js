@@ -151,6 +151,7 @@ async function getKas(req, res, next) {
           {
             $group: {
               _id: null,
+              totalKas: { $sum: "$nominal" },
               totalKasLunas: {
                 $sum: {
                   $cond: [{ $eq: ["$status", "Lunas"] }, "$nominal", 0],
@@ -190,6 +191,7 @@ async function getKas(req, res, next) {
       ]);
 
     const kasSummary = kasSummaryResult[0] || {
+      totalKas: 0,
       totalKasLunas: 0,
       totalLunas: 0,
       totalBelumLunas: 0,
@@ -198,7 +200,8 @@ async function getKas(req, res, next) {
       pemasukanLainResult[0]?.totalPemasukanLain || 0;
     const totalPengeluaran =
       pengeluaranResult[0]?.totalPengeluaran || 0;
-    const totalPemasukan = kasSummary.totalKasLunas + totalPemasukanLain;
+    const totalKasMasuk = kasSummary.totalKas || 0;
+    const totalPemasukan = totalKasMasuk + totalPemasukanLain;
     const saldoBersih = totalPemasukan - totalPengeluaran;
     const totalSaldo = saldoBersih; // Alias untuk konsistensi
     const targetKasPerMhs = currentSemester?.targetKasPerMhs || 0;
@@ -206,6 +209,7 @@ async function getKas(req, res, next) {
     const targetKasTotal = totalMahasiswa * targetKasPerMhs;
 
     const summary = {
+      totalKas: totalKasMasuk,
       totalKasLunas: kasSummary.totalKasLunas,
       totalPemasukanLain,
       totalPemasukan,

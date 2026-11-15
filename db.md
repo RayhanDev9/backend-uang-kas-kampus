@@ -363,9 +363,12 @@ module.exports = mongoose.models.PaymentHistory || mongoose.model("PaymentHistor
    Hanya boleh ada **tepat satu** dokumen di koleksi `Semester` yang memiliki `isAktif: true`. Setiap operasi aktivasi semester harus menonaktifkan semester lainnya terlebih dahulu (`Semester.updateMany({}, { isAktif: false })`).
 
 2. **Kalkulasi Saldo Kas Bersih (Net Real Balance)**:
-   $$\text{Total Pemasukan} = \sum (\text{Nominal Kas Lunas}) + \sum (\text{Nominal Pemasukan Lain})$$
+   $$\text{Total Kas Mahasiswa} = \sum (\text{Nominal Kas Seluruh Mahasiswa})$$
+   $$\text{Total Pemasukan} = \text{Total Kas Mahasiswa} + \sum (\text{Nominal Pemasukan Lain})$$
    $$\text{Total Pengeluaran} = \sum (\text{Nominal Pengeluaran})$$
    $$\text{Saldo Kas Riil Saat Ini} = \text{Total Pemasukan} - \text{Total Pengeluaran}$$
+
+   *Catatan*: Nominal kas yang disetorkan oleh mahasiswa yang berstatus "Belum Lunas" (cicilan) tetap dihitung penuh ke dalam `Total Kas Mahasiswa` dan `Saldo Kas Riil` karena uang fisik/transfer tersebut sudah diterima bendahara kelas. Status "Lunas" / "Belum Lunas" berfungsi untuk memantau pemenuhan target iuran tiap individu mahasiswa.
 
 3. **Validasi Defisit (Pencegahan Saldo Negatif)**:
    Saat membuat dokumen `Pengeluaran` baru, backend disarankan memvalidasi apakah $\text{Nominal Pengeluaran} \le \text{Saldo Kas Riil}$ untuk mencegah kas bon / defisit yang tidak terotorisasi.

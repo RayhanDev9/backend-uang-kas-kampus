@@ -326,14 +326,18 @@ async function exportKas(req, res, next) {
     ];
     applyHeaderStyle(wsSummary);
 
+    const sumTotalKasMasuk = kasList.reduce((acc, c) => acc + c.nominal, 0);
     const sumKasLunas = kasList
       .filter((k) => k.status === "Lunas")
+      .reduce((acc, c) => acc + c.nominal, 0);
+    const sumKasBelumLunas = kasList
+      .filter((k) => k.status === "Belum Lunas")
       .reduce((acc, c) => acc + c.nominal, 0);
     const sumPemasukanLain = pemasukanLainList.reduce(
       (acc, c) => acc + c.nominal,
       0
     );
-    const sumTotalPemasukan = sumKasLunas + sumPemasukanLain;
+    const sumTotalPemasukan = sumTotalKasMasuk + sumPemasukanLain;
     const sumPengeluaran = pengeluaranList.reduce(
       (acc, c) => acc + c.nominal,
       0
@@ -341,13 +345,26 @@ async function exportKas(req, res, next) {
     const saldoBersih = sumTotalPemasukan - sumPengeluaran;
 
     const r1 = wsSummary.addRow({
-      komponen: "Total Kas Mahasiswa Lunas",
-      jumlah: sumKasLunas,
+      komponen: "Total Kas Mahasiswa Terkumpul (Semua)",
+      jumlah: sumTotalKasMasuk,
     });
+    r1.font = { bold: true };
     r1.getCell("jumlah").numFmt = '"Rp" #,##0';
 
+    const r1a = wsSummary.addRow({
+      komponen: "  • Dari Mahasiswa Lunas",
+      jumlah: sumKasLunas,
+    });
+    r1a.getCell("jumlah").numFmt = '"Rp" #,##0';
+
+    const r1b = wsSummary.addRow({
+      komponen: "  • Dari Mahasiswa Belum Lunas (Cicilan)",
+      jumlah: sumKasBelumLunas,
+    });
+    r1b.getCell("jumlah").numFmt = '"Rp" #,##0';
+
     const r2 = wsSummary.addRow({
-      komponen: "Total Pemasukan Non-Kas",
+      komponen: "Total Pemasukan Non-Kas (Lain-lain)",
       jumlah: sumPemasukanLain,
     });
     r2.getCell("jumlah").numFmt = '"Rp" #,##0';
