@@ -360,43 +360,114 @@ async function runImport() {
   }));
   await Pengeluaran.insertMany(pengeluaran3Data);
 
-  // Buat Riwayat Audit Log
-  const auditLogs = [
-    {
-      semesterId: sem3._id,
-      aksi: "IMPORT_EXCEL",
-      nama: "Bendahara",
-      keterangan: "Inisialisasi data buku kas kelas Semester Ganjil 2026/2027",
-      waktu: new Date("2026-07-07"),
-    },
-    {
-      semesterId: sem3._id,
-      aksi: "CREATE",
-      nim: "251******03",
-      nama: "ANDRE JEREMIA",
-      nominal: 20000,
-      statusBaru: "Lunas",
-      keterangan: "Pembayaran kas mahasiswa (Kas UTS Rp10.000 + Kas UAS Rp10.000)",
-      waktu: new Date("2026-10-20"),
-    },
-    {
+  // ================= GENERATE PAYMENT HISTORY LENGKAP =================
+  console.log("\n5. Mengisi audit riwayat (PaymentHistory) untuk seluruh semester...");
+  const allHistory = [];
+
+  // History Semester 1
+  allHistory.push({
+    semesterId: sem1._id,
+    aksi: "IMPORT_EXCEL",
+    nama: "Bendahara",
+    keterangan: "Inisialisasi buku kas kelas Semester Ganjil 2025/2026 (01TPLE009)",
+    waktu: new Date("2025-09-20"),
+  });
+  rawMhsSem1.forEach((m) => {
+    if (m.bayar > 0) {
+      allHistory.push({
+        semesterId: sem1._id,
+        aksi: "CREATE",
+        nim: generateMaskedNim(m.no),
+        nama: m.nama,
+        nominal: m.bayar,
+        statusBaru: m.bayar >= 50000 ? "Lunas" : "Belum Lunas",
+        keterangan: `Pembayaran iuran kas mahasiswa ${m.nama} (Rp ${m.bayar.toLocaleString("id-ID")})`,
+        waktu: new Date("2025-11-15"),
+      });
+    }
+  });
+  pengeluaranSem1.forEach((p) => {
+    allHistory.push({
+      semesterId: sem1._id,
+      aksi: "EXPENSE_CREATE",
+      nama: p.pic,
+      nominal: p.nominal,
+      keterangan: `Pengeluaran kas: ${p.judul} (${p.kategori})`,
+      waktu: new Date(p.tanggal),
+    });
+  });
+
+  // History Semester 2
+  allHistory.push({
+    semesterId: sem2._id,
+    aksi: "IMPORT_EXCEL",
+    nama: "Bendahara",
+    keterangan: "Inisialisasi buku kas kelas Semester Genap 2025/2026 (02TPLE009)",
+    waktu: new Date("2026-03-07"),
+  });
+  rawMhsSem2.forEach((m) => {
+    if (m.bayar > 0) {
+      allHistory.push({
+        semesterId: sem2._id,
+        aksi: "CREATE",
+        nim: generateMaskedNim(m.no),
+        nama: m.nama,
+        nominal: m.bayar,
+        statusBaru: m.bayar >= 70000 ? "Lunas" : "Belum Lunas",
+        keterangan: `Pembayaran iuran kas mahasiswa ${m.nama} (Rp ${m.bayar.toLocaleString("id-ID")})`,
+        waktu: new Date("2026-04-18"),
+      });
+    }
+  });
+  pengeluaranSem2.forEach((p) => {
+    allHistory.push({
+      semesterId: sem2._id,
+      aksi: "EXPENSE_CREATE",
+      nama: p.pic,
+      nominal: p.nominal,
+      keterangan: `Pengeluaran kas: ${p.judul} (${p.kategori})`,
+      waktu: new Date(p.tanggal),
+    });
+  });
+
+  // History Semester 3 (Aktif)
+  allHistory.push({
+    semesterId: sem3._id,
+    aksi: "IMPORT_EXCEL",
+    nama: "Bendahara",
+    nominal: 90000,
+    keterangan: "Inisialisasi saldo awal kas semester 2&1 dialihkan ke semester 3",
+    waktu: new Date("2026-07-07"),
+  });
+  rawMhsSem3.forEach((m) => {
+    if (m.bayar > 0) {
+      allHistory.push({
+        semesterId: sem3._id,
+        aksi: "CREATE",
+        nim: generateMaskedNim(m.no),
+        nama: m.nama,
+        nominal: m.bayar,
+        statusBaru: m.bayar >= 20000 ? "Lunas" : "Belum Lunas",
+        keterangan: m.bayarUas > 0
+          ? `Pembayaran iuran kas mahasiswa ${m.nama} (Kas UTS Rp10.000 + Kas UAS Rp10.000)`
+          : `Pembayaran iuran kas mahasiswa ${m.nama} (Kas UTS Rp10.000)`,
+        waktu: m.bayarUas > 0 ? new Date("2026-10-20") : new Date("2026-09-19"),
+      });
+    }
+  });
+  pengeluaranSem3.forEach((p) => {
+    allHistory.push({
       semesterId: sem3._id,
       aksi: "EXPENSE_CREATE",
-      nama: "Bendahara",
-      nominal: 50000,
-      keterangan: "Pengeluaran kas: BELI SPIDOL (Perlengkapan Kelas)",
-      waktu: new Date("2026-10-10"),
-    },
-    {
-      semesterId: sem3._id,
-      aksi: "EXPENSE_CREATE",
-      nama: "Sie Sosial",
-      nominal: 60000,
-      keterangan: "Pengeluaran kas: SUMBANGAN AHMAD SYAUQI (Sosial & Santunan)",
-      waktu: new Date("2026-10-17"),
-    },
-  ];
-  await PaymentHistory.insertMany(auditLogs);
+      nama: p.pic,
+      nominal: p.nominal,
+      keterangan: `Pengeluaran kas: ${p.judul} (${p.kategori})`,
+      waktu: new Date(p.tanggal),
+    });
+  });
+
+  await PaymentHistory.insertMany(allHistory);
+  console.log(`✓ Total ${allHistory.length} riwayat audit berhasil disimpan ke PaymentHistory!`);
 
   console.log("\n=======================================================");
   console.log("🎉 SELURUH DATA DARI FILE .MD BERHASIL DISINKRONISASI!");
